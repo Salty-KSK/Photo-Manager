@@ -49,7 +49,7 @@ const TEST_TEMPLATES: Record<string, {
     fields: [
       { key: 'designPressure', label: '設計圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.0' },
       { key: 'holdTime', label: '保持時間', type: 'combo', units: ['時間', '分', 'h', 'min'], placeholder: '24' },
-      { key: 'pressureState', label: '撮影対象', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
+      { key: 'pressureState', label: '区分', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
       { key: 'startTime', label: '開始時間', type: 'time_select' },
       { key: 'testPressure', label: '試験圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.0' },
     ]
@@ -59,7 +59,7 @@ const TEST_TEMPLATES: Record<string, {
     fields: [
       { key: 'designPressure', label: '設計圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.75' },
       { key: 'holdTime', label: '保持時間', type: 'combo', units: ['分', '時間', '10分以上'], placeholder: '10' },
-      { key: 'pressureState', label: '撮影対象', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
+      { key: 'pressureState', label: '区分', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
       { key: 'startTime', label: '開始時間', type: 'time_select' },
       { key: 'testPressure', label: '試験圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.75' },
     ]
@@ -924,7 +924,37 @@ function App() {
                           
                           {globalDisplayFields.includes('description') && (
                             <div className="info-row description-multi-row">
-                              <label style={{ fontWeight: 600, color: 'var(--sys-blue)' }}>内容</label>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '0.35rem' }}>
+                                <label style={{ fontWeight: 600, color: 'var(--sys-blue)', margin: 0 }}>内容</label>
+                                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                  {globalIndex > 0 && (
+                                    <button
+                                      type="button"
+                                      title="上の写真の内容をコピー"
+                                      onClick={() => {
+                                        const prevDesc = photos[globalIndex - 1]?.description || '';
+                                        updatePhoto(photo.id, 'description', prevDesc);
+                                      }}
+                                      style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 500, background: '#ffffff', border: '1px solid #007aff', color: '#007aff', borderRadius: '4px', cursor: 'pointer' }}
+                                    >
+                                      📋 上の写真の内容をコピー
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    title="すべての写真にこの内容をコピー"
+                                    onClick={() => {
+                                      if (confirm('すべての写真の内容をこのテキストに上書きコピーしますか？')) {
+                                        const currentDesc = photo.description || '';
+                                        setPhotos(prev => prev.map(p => ({ ...p, description: currentDesc })));
+                                      }
+                                    }}
+                                    style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 500, background: '#eef6ff', border: '1px solid #007aff', color: '#007aff', borderRadius: '4px', cursor: 'pointer' }}
+                                  >
+                                    全写真へ一括コピー
+                                  </button>
+                                </div>
+                              </div>
                               <div className="input-wrapper description-lines-card" style={{ background: '#f5f7fa', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e1e4e8', width: '100%' }}>
                                 {(() => {
                                   const rawDesc = photo.description ?? '';
