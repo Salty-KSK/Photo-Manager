@@ -74,6 +74,8 @@ function doPost(e) {
     
     if (data.action === 'export') {
       return handleExport(data);
+    } else if (data.action === 'exportPdf') {
+      return handleExportPdf(data);
     }
     
     return ContentService.createTextOutput(JSON.stringify({ error: 'Invalid action' }))
@@ -294,6 +296,26 @@ function handleList() {
     return ContentService.createTextOutput(JSON.stringify({ error: err.message }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function handleExportPdf(data) {
+  const spreadsheetId = data.spreadsheetId;
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  
+  // スプレッドシートのあるフォルダを取得
+  const file = DriveApp.getFileById(spreadsheetId);
+  const parents = file.getParents();
+  const folder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
+  
+  // PDFとして出力
+  const pdfBlob = ss.getBlob().setName(ss.getName() + '.pdf');
+  const pdfFile = folder.createFile(pdfBlob);
+  pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  
+  return ContentService.createTextOutput(JSON.stringify({
+    success: true,
+    pdfUrl: pdfFile.getUrl()
+  })).setMimeType(ContentService.MimeType.JSON);
 }
 
 function handleListProjects() {

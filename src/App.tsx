@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, X, FileSpreadsheet, ChevronUp, ChevronDown, ArrowUpDown, Menu, Plus, RefreshCw, RotateCw, Trash2 } from 'lucide-react';
+import { Upload, X, FileSpreadsheet, ChevronUp, ChevronDown, ArrowUpDown, Menu, Plus, RefreshCw, RotateCw, Trash2, Home, FilePlus } from 'lucide-react';
 import './App.css';
 
 // テンプレートタイプ定義
@@ -121,7 +121,12 @@ function IndividualDropzone({ onDropBlock }: { onDropBlock: (file: File) => void
   );
 }
 
+type ViewMode = 'home' | 'editor';
+
 function App() {
+  const [currentView, setCurrentView] = useState<ViewMode>('home');
+  const [lastExportedSpreadsheetId, setLastExportedSpreadsheetId] = useState('');
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [photos, setPhotos] = useState<PhotoData[]>([]);
   const [projectNameLine1, setProjectNameLine1] = useState('');
   const [projectNameLine2, setProjectNameLine2] = useState('');
@@ -435,7 +440,13 @@ function App() {
       const result = await res.json();
       
       if (result.url) {
-        alert(`スプレッドシートが作成されました！\n${result.url}`);
+        // URLからIDを抽出
+        const match = result.url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (match) setLastExportedSpreadsheetId(match[1]);
+        // result.spreadsheetId があればそちらを使用
+        if (result.spreadsheetId) setLastExportedSpreadsheetId(result.spreadsheetId);
+        alert(`保存しました！`);
+        // window.openは削除しない
         window.open(result.url, '_blank');
       } else {
         alert('エクスポートに失敗しました: ' + (result.error || '不明なエラー'));
@@ -447,6 +458,45 @@ function App() {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const handleExportPdf = async () => {
+    if (!lastExportedSpreadsheetId) {
+      alert('先に保存してからPDF出力してください');
+      return;
+    }
+    setIsExportingPdf(true);
+    try {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'exportPdf', spreadsheetId: lastExportedSpreadsheetId }),
+      });
+      const result = await res.json();
+      if (result.pdfUrl) {
+        window.open(result.pdfUrl, '_blank');
+      } else {
+        alert('PDF出力に失敗しました: ' + (result.error || '不明なエラー'));
+      }
+    } catch (err: any) {
+      alert('PDF出力中にエラー:\n' + (err?.message || String(err)));
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const startNewLedger = () => {
+    setPhotos([]);
+    setProjectNameLine1('');
+    setProjectNameLine2('');
+    setTemplateType('sekou3');
+    setGlobalDisplayFields([...DEFAULT_DISPLAY_FIELDS]);
+    setSelectedPhotoId(null);
+    setLastExportedSpreadsheetId('');
+    setCurrentView('editor');
+  };
+
+  const goHome = () => {
+    setCurrentView('home');
   };
 
   const handleImport = async () => {
@@ -493,6 +543,86 @@ function App() {
 
   const photoPages = chunkArray(photos, photosPerPage);
   const totalPhotos = photos.length;
+
+  if (currentView === 'home') {
+    return (
+      <div className="home-page">
+        <div className="home-header">
+          <h1>工事写真台帳</h1>
+          <p>パル設計</p>
+        </div>
+        <div className="home-content">
+          <button className="btn btn-primary btn-large" onClick={startNewLedger}>
+            <FilePlus size={24} />
+            新規作成
+          </button>
+          
+          <div className="home-section">
+            <div className="file-list-header">
+              <h2>既存の台帳を編集</h2>
+              <button 
+                className="btn-icon" 
+                onClick={fetchFileList} 
+                disabled={isFetchingList}
+                title="リストを更新"
+              >
+                <RefreshCw size={16} className={isFetchingList ? 'spinning' : ''} />
+              </button>
+            </div>
+            <div className="home-file-list">
+              {isFetchingList ? (
+                <div className="file-list-empty">読み込み中...</div>
+              ) : fileList.length === 0 ? (
+                <div className="file-list-empty">台帳がありません</div>
+              ) : (
+                fileList.map((file) => (
+                  <div key={file.id} className="home-file-item" onClick={async () => {
+                    setSelectedFileId(file.id);
+                    setIsImporting(true);
+                    try {
+                      const res = await fetch(`${GAS_URL}?action=import&spreadsheetId=${file.id}`);
+                      const result = await res.json();
+                      if (result.data) {
+                        setProjectNameLine1(result.data.projectNameLine1 || '');
+                        setProjectNameLine2(result.data.projectNameLine2 || '');
+                        if (result.data.templateType) setTemplateType(result.data.templateType);
+                        if (result.data.photos?.[0]?.displayFields) setGlobalDisplayFields(result.data.photos[0].displayFields);
+                        const restoredPhotos: PhotoData[] = (result.data.photos || []).map((p: any) => ({
+                          ...p,
+                          id: crypto.randomUUID(),
+                          file: null,
+                          previewUrl: p.imageUrl || '',
+                          isBlank: !p.imageUrl,
+                          testFields: p.testFields || {},
+                          rotation: 0,
+                          displayFields: p.displayFields || [...DEFAULT_DISPLAY_FIELDS],
+                          locationNumber: p.locationNumber || '',
+                        }));
+                        setPhotos(restoredPhotos);
+                        setCurrentView('editor');
+                      } else {
+                        alert(result.error || '読み込みに失敗しました');
+                      }
+                    } catch (err) {
+                      alert('読み込み中にエラーが発生しました');
+                    } finally {
+                      setIsImporting(false);
+                    }
+                  }}>
+                    <FileSpreadsheet size={20} />
+                    <div className="home-file-info">
+                      <span className="home-file-name">{file.name}</span>
+                      <span className="home-file-date">{file.dateStr}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-layout">
@@ -582,55 +712,6 @@ function App() {
             </div>
           </div>
 
-          <div className="sidebar-section">
-            <div className="file-list-header">
-              <h3>既存の台帳を編集</h3>
-              <button 
-                className="btn-icon" 
-                onClick={fetchFileList} 
-                disabled={isFetchingList}
-                title="リストを更新"
-              >
-                <RefreshCw size={14} className={isFetchingList ? 'animate-spin' : ''} />
-              </button>
-            </div>
-            
-            <div className="file-list-container">
-              <div className="file-list">
-                {isFetchingList ? (
-                  <div className="file-list-empty">読み込み中...</div>
-                ) : fileList.length === 0 ? (
-                  <div className="file-list-empty">
-                    最近の台帳が見つかりません。<br/>右上のボタンで更新してください。
-                  </div>
-                ) : (
-                  fileList.map((file) => (
-                    <label key={file.id} className="file-item">
-                      <input 
-                        type="radio" 
-                        name="import-file" 
-                        value={file.id} 
-                        checked={selectedFileId === file.id}
-                        onChange={() => setSelectedFileId(file.id)}
-                      />
-                      <div className="file-item-info">
-                        <span className="file-item-name" title={file.name}>{file.name}</span>
-                        <span className="file-item-date">{file.dateStr}</span>
-                      </div>
-                    </label>
-                  ))
-                )}
-              </div>
-            </div>
-            <button 
-              className="btn btn-secondary btn-full" 
-              onClick={handleImport}
-              disabled={!selectedFileId || isImporting}
-            >
-              <FileSpreadsheet size={16} />
-              {isImporting ? '読込中...' : '選択した台帳を読み込む'}
-            </button>
-          </div>
         </div>
       </aside>
 
@@ -647,6 +728,9 @@ function App() {
         {/* Top Navbar */}
         <header className="topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button className="btn-icon" onClick={goHome} title="ホームに戻る">
+              <Home size={24} />
+            </button>
             <button className="menu-toggle" onClick={() => setIsSidebarOpen(true)}>
               <Menu size={24} />
             </button>
@@ -664,8 +748,16 @@ function App() {
               disabled={isExporting || totalPhotos === 0}
               style={{ background: '#000' }}
             >
-              <Upload size={18} />
-              {isExporting ? '出力中...' : '出力する'}
+              <FileSpreadsheet size={18} />
+              {isExporting ? '保存中...' : '保存'}
+            </button>
+            <button 
+              className="btn btn-primary" 
+              onClick={handleExportPdf}
+              disabled={isExportingPdf || !lastExportedSpreadsheetId}
+              style={{ background: '#c62828' }}
+            >
+              {isExportingPdf ? 'PDF出力中...' : 'PDF出力'}
             </button>
           </div>
         </header>
