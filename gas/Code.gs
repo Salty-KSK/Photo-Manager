@@ -150,24 +150,41 @@ function handleExport(data) {
 
   const sheet = ss.getSheets()[0];
   const targetId = ss.getId();
-  const templateSheet = ss.getSheets()[0];
   
   const totalPhotos = photos.length;
   const blocksPerPage = template.blocksPerPage;
   const pageCount = Math.max(1, Math.ceil(totalPhotos / blocksPerPage));
   
-  // 必要なページ数ぶんタブ（シート）を用意し、足りない分はテンプレートタブを直接複製！
+  const templateSheet = ss.getSheets()[0];
   const sheets = [templateSheet];
-  templateSheet.setName('ページ1');
+  try {
+    templateSheet.setName('ページ1');
+  } catch (e) {}
   
-  // 既存の不要なコピーシートがあればクリアまたは再利用
-  const allSheets = ss.getSheets();
+  // 不足しているページ数ぶん、templateSheet を複製して「ページ2」「ページ3」... を100%確実に作成！
   for (let p = 1; p < pageCount; p++) {
-    if (p < allSheets.length) {
-      sheets.push(allSheets[p]);
-    } else {
-      const newSheet = templateSheet.copyTo(ss).setName(`ページ${p + 1}`);
-      sheets.push(newSheet);
+    const sheetName = `ページ${p + 1}`;
+    let sheetForPage = ss.getSheetByName(sheetName);
+    if (!sheetForPage) {
+      sheetForPage = templateSheet.copyTo(ss).setName(sheetName);
+    }
+    sheets.push(sheetForPage);
+  }
+  
+  // 不要になった過去の余分なページタブがあれば自動削除整理
+  const allSheets = ss.getSheets();
+  for (let i = 0; i < allSheets.length; i++) {
+    const sh = allSheets[i];
+    const sName = sh.getName();
+    if (sName.startsWith('ページ')) {
+      const pNum = parseInt(sName.replace('ページ', ''), 10);
+      if (pNum > pageCount) {
+        try {
+          ss.deleteSheet(sh);
+        } catch (e) {
+          Logger.log('Delete sheet error: ' + e.message);
+        }
+      }
     }
   }
   
