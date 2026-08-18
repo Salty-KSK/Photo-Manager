@@ -193,6 +193,9 @@ function handleExport(data) {
       } catch (err) {
         Logger.log('Image insertion error: ' + err.message);
       }
+    } else if (photo.imageUrl) {
+      // 既存のDrive画像URLを維持
+      photoImageUrls[i] = photo.imageUrl;
     }
   }
   
@@ -216,7 +219,7 @@ function handleExport(data) {
       testFields: p.testFields,
       displayFields: p.displayFields,
       isBlank: p.isBlank,
-      imageUrl: photoImageUrls[idx] || '',
+      imageUrl: photoImageUrls[idx] || p.imageUrl || '',
     })),
     exportDate: new Date().toISOString(),
   };
@@ -403,17 +406,19 @@ function insertImageIntoCell(sheet, cellRef, imageBlob, folderId) {
   const file = folder.createFile(imageBlob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   
-  const imageUrl = `https://drive.google.com/uc?id=${file.getId()}`;
+  const fileId = file.getId();
+  const ucUrl = `https://drive.google.com/uc?id=${fileId}`;
+  const displayUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
   const cell = sheet.getRange(cellRef);
   
   try {
-    const image = SpreadsheetApp.newCellImage().setSourceUrl(imageUrl).build();
+    const image = SpreadsheetApp.newCellImage().setSourceUrl(ucUrl).build();
     cell.setValue(image);
   } catch (e) {
-    cell.setFormula(`=IMAGE("${imageUrl}", 1)`);
+    cell.setFormula(`=IMAGE("${ucUrl}", 1)`);
   }
   
-  return imageUrl;
+  return displayUrl;
 }
 
 function getFieldLabel(key) {

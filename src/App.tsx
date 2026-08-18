@@ -77,6 +77,7 @@ export interface PhotoData {
   rotation: number;
   displayFields: DisplayFieldKey[];
   locationNumber: string;
+  imageUrl?: string;
 }
 
 const CATEGORIES = [
@@ -93,6 +94,17 @@ function chunkArray<T>(array: T[], size: number): T[][] {
     result.push(array.slice(i, i + size));
   }
   return result;
+}
+
+function getDisplayImageUrl(url: string | undefined): string {
+  if (!url) return '';
+  if (url.startsWith('blob:') || url.startsWith('data:')) return url;
+  
+  const match = url.match(/id=([a-zA-Z0-9_-]+)/) || url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1600`;
+  }
+  return url;
 }
 
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjEZQdrAZ0tZN8EFNmZS2_FT9yabX4R2mmyjaPkmqmkDF9dvJikyRYkjXXZEW6jzJm/exec';
@@ -542,17 +554,22 @@ function App() {
                         setProjectNameLine2(result.data.projectNameLine2 || '');
                         if (result.data.templateType) setTemplateType(result.data.templateType);
                         if (result.data.photos?.[0]?.displayFields) setGlobalDisplayFields(result.data.photos[0].displayFields);
-                        const restoredPhotos: PhotoData[] = (result.data.photos || []).map((p: any) => ({
-                          ...p,
-                          id: crypto.randomUUID(),
-                          file: null,
-                          previewUrl: p.imageUrl || '',
-                          isBlank: !p.imageUrl,
-                          testFields: p.testFields || {},
-                          rotation: 0,
-                          displayFields: p.displayFields || [...DEFAULT_DISPLAY_FIELDS],
-                          locationNumber: p.locationNumber || '',
-                        }));
+                        const restoredPhotos: PhotoData[] = (result.data.photos || []).map((p: any) => {
+                          const rawUrl = p.imageUrl || p.previewUrl || '';
+                          const displayUrl = getDisplayImageUrl(rawUrl);
+                          return {
+                            ...p,
+                            id: crypto.randomUUID(),
+                            file: null,
+                            previewUrl: displayUrl,
+                            imageUrl: rawUrl,
+                            isBlank: !rawUrl,
+                            testFields: p.testFields || {},
+                            rotation: 0,
+                            displayFields: p.displayFields || [...DEFAULT_DISPLAY_FIELDS],
+                            locationNumber: p.locationNumber || '',
+                          };
+                        });
                         setPhotos(restoredPhotos);
                         setCurrentView('editor');
                       } else {
