@@ -1053,3 +1053,37 @@ select {
 .spinning {
   animation: spin 1s linear infinite;
 }
+
+/* ページ追加ボタンの確定中央配置 */
+.add-page-wrapper {
+  max-width: 850px;
+  width: 100%;
+  margin: 1.5rem auto 3rem auto;
+  display: flex;
+  justify-content: center;
+}
+
+.btn-add-page {
+  width: 100%;
+  padding: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background-color: #ffffff;
+  color: var(--sys-blue);
+  border: 2px dashed rgba(0, 122, 255, 0.35);
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-add-page:hover {
+  background-color: #f0f7ff;
+  border-color: var(--sys-blue);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 122, 255, 0.15);
+}

@@ -974,32 +974,33 @@ function App() {
               ))}
             </div>
 
-            {/* ページ追加ボタン */}
-            <button 
-              className="btn btn-secondary btn-full"
-              style={{ maxWidth: '850px', margin: '0 auto', padding: '1rem' }}
-              onClick={() => {
-                const newBlanks: PhotoData[] = Array.from({ length: photosPerPage }, () => ({
-                  id: crypto.randomUUID(),
-                  file: null,
-                  previewUrl: '',
-                  date: new Date().toISOString().split('T')[0],
-                  location: '',
-                  category: '',
-                  testType: '',
-                  description: '',
-                  testFields: {} as Record<string, string>,
-                  isBlank: true,
-                  rotation: 0,
-                  displayFields: [] as DisplayFieldKey[],
-                  locationNumber: '',
-                }));
-                setPhotos(prev => [...prev, ...newBlanks]);
-              }}
-            >
-              <Plus size={18} />
-              ページを追加
-            </button>
+            {/* ページ追加ボタン (中央配置ラッパー) */}
+            <div className="add-page-wrapper">
+              <button 
+                className="btn-add-page"
+                onClick={() => {
+                  const newBlanks: PhotoData[] = Array.from({ length: photosPerPage }, () => ({
+                    id: crypto.randomUUID(),
+                    file: null,
+                    previewUrl: '',
+                    date: new Date().toISOString().split('T')[0],
+                    location: '',
+                    category: '',
+                    testType: '',
+                    description: '',
+                    testFields: {} as Record<string, string>,
+                    isBlank: true,
+                    rotation: 0,
+                    displayFields: [] as DisplayFieldKey[],
+                    locationNumber: '',
+                  }));
+                  setPhotos(prev => [...prev, ...newBlanks]);
+                }}
+              >
+                <Plus size={20} />
+                ページを追加
+              </button>
+            </div>
             </>
           )}
         </div>
