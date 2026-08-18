@@ -474,8 +474,7 @@ function insertImageIntoCell(sheet, startRow, template, imageBlob, folderId) {
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   
   const fileId = file.getId();
-  const ucUrl = `https://drive.google.com/uc?id=${fileId}`;
-  const displayUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
+  const directUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
   
   // 写真結合セルの行数 (例: A5:B24 の20行分)
   let rowSpan = 20;
@@ -488,11 +487,11 @@ function insertImageIntoCell(sheet, startRow, template, imageBlob, folderId) {
   const photoRange = sheet.getRange(`A${startRow}:B${endRow}`);
   photoRange.merge();
   
-  // 結合セル(A5:B24)のアンカー(A5)に=IMAGE数式を直接セットし画像表示を100%確実に保証
+  // スプレッドシート本体で100%確実に画像が即座描画される直リンクURL形式で=IMAGE数式をセット
   const anchorCell = sheet.getRange(`A${startRow}`);
-  anchorCell.setFormula(`=IMAGE("${ucUrl}", 1)`);
+  anchorCell.setFormula(`=IMAGE("${directUrl}", 1)`);
   
-  return displayUrl;
+  return directUrl;
 }
 
 function getFieldLabel(key) {
