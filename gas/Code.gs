@@ -307,6 +307,18 @@ function handleExport(data) {
       }
     } else if (photo.imageUrl) {
       photoImageUrls[i] = photo.imageUrl;
+      // 既存画像の場合も写真結合セル(A:B)に=IMAGE数式を確実に配置
+      const match = photo.imageUrl.match(/id=([a-zA-Z0-9_-]+)/);
+      if (match) {
+        const fileId = match[1];
+        const lh3Url = `https://lh3.googleusercontent.com/d/${fileId}`;
+        let rowSpan = 20;
+        if (template && template.contentRows === 19) rowSpan = 19;
+        const endRow = dataStartRow + rowSpan - 1;
+        const photoRange = targetSheet.getRange(`A${dataStartRow}:B${endRow}`);
+        photoRange.merge();
+        targetSheet.getRange(`A${dataStartRow}`).setFormula(`=IMAGE("${lh3Url}", 2)`);
+      }
     }
   }
   
@@ -559,24 +571,25 @@ function insertImageIntoCell(sheet, startRow, template, imageBlob, folderId) {
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   
   const fileId = file.getId();
-  const directUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
+  const cdnUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+  const displayUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
   
-  // 写真結合セルの行数 (例: A5:B24 の20行分)
+  // 写真結合セルの正確な行数 (normal3/normal2: 20行, sekou3: 19行)
   let rowSpan = 20;
   if (template && template.contentRows === 19) {
     rowSpan = 19;
   }
   const endRow = startRow + rowSpan - 1;
   
-  // A列とB列の結合セル範囲(例: A5:B24)を再結合
+  // A列とB列の結合セル範囲(例: A5:B24 または A5:B23)をしっかりと結合
   const photoRange = sheet.getRange(`A${startRow}:B${endRow}`);
   photoRange.merge();
   
-  // スプレッドシート本体で100%確実に画像が即座描画される直リンクURL形式で=IMAGE数式をセット
+  // モード2 (=IMAGE(cdnUrl, 2)): 写真枠のサイズ全体ぴったりに即座に余白なしで表示
   const anchorCell = sheet.getRange(`A${startRow}`);
-  anchorCell.setFormula(`=IMAGE("${directUrl}", 1)`);
+  anchorCell.setFormula(`=IMAGE("${cdnUrl}", 2)`);
   
-  return directUrl;
+  return displayUrl;
 }
 
 function getFieldLabel(key) {
