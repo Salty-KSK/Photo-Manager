@@ -1087,3 +1087,81 @@ select {
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(0, 122, 255, 0.15);
 }
+
+/* 内容の行ごと入力スタイル */
+.description-multi-row {
+  align-items: flex-start !important;
+}
+
+.description-lines-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.desc-line-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background-color: #f8f9fa;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--sys-border);
+}
+
+.desc-line-num {
+  font-size: 0.75rem;
+  color: var(--sys-text-muted);
+  width: 40px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.desc-line-item input {
+  flex: 1;
+  background-color: #ffffff !important;
+  border: 1px solid var(--sys-border) !important;
+  padding: 0.35rem 0.6rem !important;
+  font-size: 0.85rem !important;
+}
+
+.btn-remove-line {
+  background: none;
+  border: none;
+  color: var(--sys-danger);
+  cursor: pointer;
+  padding: 0.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.btn-remove-line:hover {
+  background: #ffeeed;
+}
+
+.btn-add-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--sys-blue);
+  background-color: #f0f7ff;
+  border: 1px dashed rgba(0, 122, 255, 0.4);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  align-self: flex-start;
+  margin-top: 0.2rem;
+  transition: all 0.2s;
+}
+
+.btn-add-line:hover {
+  background-color: #e1f0ff;
+  border-color: var(--sys-blue);
+}

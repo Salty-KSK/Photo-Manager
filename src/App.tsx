@@ -923,46 +923,45 @@ function App() {
                           {globalDisplayFields.includes('description') && (
                             <div className="info-row description-multi-row">
                               <label>内容</label>
-                              <div className="input-wrapper description-lines-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%' }}>
-                                {((photo.description || '').split('\n')).map((descLine, lineIndex, arr) => (
-                                  <div key={lineIndex} className="desc-line-item" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--sys-text-muted)', width: '38px', flexShrink: 0 }}>
-                                      {lineIndex + 1}行目
-                                    </span>
-                                    <input
-                                      type="text"
-                                      placeholder={`内容（${lineIndex + 1}行目）...`}
-                                      value={descLine}
-                                      onChange={(e) => {
-                                        const lines = (photo.description || '').split('\n');
-                                        lines[lineIndex] = e.target.value;
-                                        updatePhoto(photo.id, 'description', lines.join('\n'));
-                                      }}
-                                      style={{ flex: 1 }}
-                                    />
-                                    {arr.length > 1 && (
-                                      <button
-                                        type="button"
-                                        className="btn-icon danger"
-                                        style={{ color: 'var(--sys-danger)', padding: '0.2rem', background: 'none', border: 'none', cursor: 'pointer' }}
-                                        title="この行を削除"
-                                        onClick={() => {
-                                          const lines = (photo.description || '').split('\n');
-                                          lines.splice(lineIndex, 1);
-                                          updatePhoto(photo.id, 'description', lines.join('\n'));
+                              <div className="input-wrapper description-lines-wrapper">
+                                {(() => {
+                                  const rawDesc = photo.description ?? '';
+                                  const lines = rawDesc ? rawDesc.split('\n') : [''];
+                                  return lines.map((descLine, lineIndex) => (
+                                    <div key={lineIndex} className="desc-line-item">
+                                      <span className="desc-line-num">{lineIndex + 1}行目</span>
+                                      <input
+                                        type="text"
+                                        placeholder={`内容 (${lineIndex + 1}行目)...`}
+                                        value={descLine}
+                                        onChange={(e) => {
+                                          const newLines = [...lines];
+                                          newLines[lineIndex] = e.target.value;
+                                          updatePhoto(photo.id, 'description', newLines.join('\n'));
                                         }}
-                                      >
-                                        <X size={16} />
-                                      </button>
-                                    )}
-                                  </div>
-                                ))}
+                                      />
+                                      {lines.length > 1 && (
+                                        <button
+                                          type="button"
+                                          className="btn-remove-line"
+                                          title="この行を削除"
+                                          onClick={() => {
+                                            const newLines = lines.filter((_, idx) => idx !== lineIndex);
+                                            updatePhoto(photo.id, 'description', newLines.join('\n'));
+                                          }}
+                                        >
+                                          <X size={14} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ));
+                                })()}
                                 <button
                                   type="button"
-                                  className="btn btn-secondary"
-                                  style={{ padding: '0.35rem 0.7rem', fontSize: '0.75rem', alignSelf: 'flex-start', marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                                  className="btn-add-line"
                                   onClick={() => {
-                                    const lines = photo.description ? photo.description.split('\n') : [''];
+                                    const rawDesc = photo.description ?? '';
+                                    const lines = rawDesc ? rawDesc.split('\n') : [''];
                                     lines.push('');
                                     updatePhoto(photo.id, 'description', lines.join('\n'));
                                   }}
