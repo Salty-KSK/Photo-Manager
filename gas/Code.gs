@@ -125,6 +125,11 @@ function handleExport(data) {
   const ss = SpreadsheetApp.openById(newFile.getId());
   const sheet = ss.getSheets()[0];
   
+  // A4横幅（約750px）に合わせて列幅を拡張指定（A,B列写真:430px, C列内容:320px）
+  sheet.setColumnWidth(1, 215);
+  sheet.setColumnWidth(2, 215);
+  sheet.setColumnWidth(3, 320);
+  
   const totalPhotos = photos.length;
   const existingBlocks = template.blocksPerPage;
   
@@ -354,14 +359,21 @@ function handleExportPdf(data) {
     const parents = file.getParents();
     const folder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
     
+    // A4印刷幅に合わせて列幅を適正拡張設定（A,B列:215px, C列:320px）
+    sheet.setColumnWidth(1, 215);
+    sheet.setColumnWidth(2, 215);
+    sheet.setColumnWidth(3, 320);
+    SpreadsheetApp.flush();
+    
     const sheetId = sheet.getSheetId();
     
-    // 高精度PDF出力設定: A4サイズ、縦向き、A〜C列をA4横幅いっぱいにジャストフィット表示、ガイド線非表示、中央揃え
+    // 高精度PDF出力設定: A4サイズ、縦向き、A〜C列をA4横幅いっぱいにジャストフィット表示、上下左右完全中央揃え
     const pdfExportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?` +
       `gid=${sheetId}` +
       '&exportFormat=pdf&format=pdf' +
       '&size=a4' +                         // A4用紙サイズ
       '&portrait=true' +                   // 縦向き
+      '&scale=4' +                         // ページ幅に自動適正拡大
       '&fitw=true' +                       // 横幅全体をページ幅にジャストフィット
       '&gridlines=false' +                 // 余計なガイド線を消し実線の罫線のみ美しく表示
       '&printtitle=false' +                // タイトル非表示
@@ -369,12 +381,12 @@ function handleExportPdf(data) {
       '&pagenumbers=false' +               // ページ番号非表示
       '&fittow=1' +                        // 横幅1ページに合わせる
       '&fittoh=0' +                        // 高さは自動展開
-      '&top_margin=0.35' +                 // 適正余白（上下左右均等）
-      '&bottom_margin=0.35' +              
+      '&top_margin=0.30' +                 // 均等適正余白
+      '&bottom_margin=0.30' +              
       '&left_margin=0.35' +                
       '&right_margin=0.35' +               
-      '&horizontal_alignment=CENTER' +     // 水平方向中央揃え
-      '&vertical_alignment=TOP' +          // 垂直方向上揃え
+      '&horizontal_alignment=CENTER' +     // 【重要】水平方向中央揃え
+      '&vertical_alignment=CENTER' +       // 【重要】垂直方向中央揃え
       '&attachment=false';
 
     const token = ScriptApp.getOAuthToken();
