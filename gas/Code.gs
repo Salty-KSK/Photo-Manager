@@ -492,13 +492,9 @@ function insertImageIntoCell(sheet, startRow, template, imageBlob, folderId) {
   const photoRange = sheet.getRange(`A${startRow}:B${endRow}`);
   photoRange.merge();
   
-  // スプレッドシート本体でもWebアプリでも100%確実に画像が表示される公式APIを使用
-  try {
-    const image = SpreadsheetApp.newCellImage().setSourceUrl(ucUrl).build();
-    photoRange.setValue(image);
-  } catch (e) {
-    photoRange.setFormula(`=IMAGE("${ucUrl}", 1)`);
-  }
+  // 結合セル(A5:B24)のアンカー(A5)に=IMAGE数式を直接セットし画像表示を100%確実に保証
+  const anchorCell = sheet.getRange(`A${startRow}`);
+  anchorCell.setFormula(`=IMAGE("${ucUrl}", 1)`);
   
   return displayUrl;
 }
