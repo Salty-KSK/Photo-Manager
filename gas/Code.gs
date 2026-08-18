@@ -349,26 +349,47 @@ function handleExportPdf(data) {
   try {
     const spreadsheetId = data.spreadsheetId;
     const file = DriveApp.getFileById(spreadsheetId);
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = ss.getSheets()[0];
     const parents = file.getParents();
     const folder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
     
-    // 高精度PDF出力設定: A4サイズ、縦向き、狭い余白（大きく表示）、横幅フィット、余計なガイド線非表示、中央揃え
+    // メタデータから実際のデータ描画範囲(A1:C{最終行})を動的に算出
+    let rangeParam = '';
+    const metaSheet = ss.getSheetByName('_metadata');
+    if (metaSheet) {
+      try {
+        const meta = JSON.parse(metaSheet.getRange('A1').getValue());
+        const templateType = meta.templateType || 'normal3';
+        const template = TEMPLATES[templateType] || TEMPLATES['normal3'];
+        const photoCount = meta.photos ? meta.photos.length : 3;
+        const lastRow = template.firstDataRow + photoCount * template.blockDataSize;
+        const sheetId = sheet.getSheetId();
+        rangeParam = `&gid=${sheetId}&range=A1%3AC${lastRow}`;
+      } catch (e) {
+        Logger.log('Meta read error in PDF export: ' + e.message);
+      }
+    }
+    
+    // 高精度PDF出力設定: A4サイズ、縦向き、指定セル範囲限定、横幅最大拡大、ガイド線非表示、上下左右完全中央揃え
     const pdfExportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?` +
       'exportFormat=pdf&format=pdf' +
       '&size=a4' +                         // A4用紙サイズ
       '&portrait=true' +                   // 縦向き
-      '&fitw=true' +                       // 横幅を1ページに収める
-      '&gridlines=false' +                 // 不要なセルガイド線を消し綺麗な罫線のみ残す
+      '&scale=4' +                         // ページ幅に合わせて自動適正拡大
+      '&gridlines=false' +                 // 余計なガイド線を消し実線の罫線のみ美しく残す
       '&printtitle=false' +                // タイトル非表示
       '&sheetnames=false' +                // シート名非表示
       '&pagenumbers=false' +               // ページ番号非表示
-      '&fittow=1' +                        // 横幅1ページにフィット拡大
-      '&top_margin=0.20' +                 // 上余白（約5mmに絞って最大表示）
-      '&bottom_margin=0.20' +              // 下余白
-      '&left_margin=0.20' +                // 左余白
-      '&right_margin=0.20' +               // 右余白
+      '&fittow=1' +                        // 横幅1ページにジャストフィット
+      '&fittoh=0' +                        // 高さは自動
+      '&top_margin=0.25' +                 // 適正余白
+      '&bottom_margin=0.25' +              
+      '&left_margin=0.25' +                
+      '&right_margin=0.25' +               
       '&horizontal_alignment=CENTER' +     // 水平方向中央揃え
-      '&vertical_alignment=TOP' +          // 垂直方向上詰め
+      '&vertical_alignment=CENTER' +       // 垂直方向中央揃え
+      rangeParam +                         // 実際に存在するA1:C列最終行のみに印刷対象を絞り込んで中央最大配置
       '&attachment=false';
 
     const token = ScriptApp.getOAuthToken();
