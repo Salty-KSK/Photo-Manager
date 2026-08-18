@@ -107,7 +107,7 @@ function handleExport(data) {
   
   const template = TEMPLATES[templateType];
   if (!template) {
-    throw new Error('Invalid templateType');
+    throw new Error('Invalid templateType: ' + templateType);
   }
 
   let ss;
@@ -115,20 +115,39 @@ function handleExport(data) {
   let mainFolder;
   let photosFolder;
 
-  // 既存のスプレッドシートを編集・保存する場合はそのファイルに直接「上書き保存」
+  // 既存ファイルがある場合、テンプレートタイプ（2枚用 ↔ 3枚用 ↔ 施工写真用）が途中で変更されたかチェック
+  let isTemplateChanged = false;
   if (spreadsheetId) {
+    try {
+      const checkSs = SpreadsheetApp.openById(spreadsheetId);
+      const metaSheet = checkSs.getSheetByName('_metadata');
+      if (metaSheet) {
+        const jsonStr = metaSheet.getRange('A1').getValue();
+        if (jsonStr) {
+          const meta = JSON.parse(jsonStr);
+          if (meta.templateType && meta.templateType !== templateType) {
+            isTemplateChanged = true;
+          }
+        }
+      }
+    } catch (e) {
+      Logger.log('Meta check error: ' + e.message);
+    }
+  }
+
+  // テンプレートタイプが変わっていない場合のみ既存ファイルへ上書き保存。
+  // タイプが「3枚用」等へ切り替えられた場合は、選択された新しいテンプレートから正しく台帳を生成！
+  if (spreadsheetId && !isTemplateChanged) {
     try {
       targetFile = DriveApp.getFileById(spreadsheetId);
       ss = SpreadsheetApp.openById(spreadsheetId);
       const parents = targetFile.getParents();
       mainFolder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
       
-      // 新しい建物名称・工事内容に応じた正しい保存先フォルダ階層を取得/作成
       const rootFolder = getOrCreateFolder(DriveApp.getRootFolder(), ROOT_FOLDER_NAME);
       const targetBuildingFolder = getOrCreateFolder(rootFolder, projectNameLine1 || '未設定');
       const targetWorkFolder = getOrCreateFolder(targetBuildingFolder, projectNameLine2 || '未設定');
       
-      // 現在の親フォルダと異なる場合（「未設定」から「実際の名称」に変更された時等）、台帳フォルダごと全自動移動！
       const currentWorkFolder = mainFolder.getParents().hasNext() ? mainFolder.getParents().next() : null;
       if (currentWorkFolder && currentWorkFolder.getId() !== targetWorkFolder.getId()) {
         mainFolder.moveTo(targetWorkFolder);
@@ -141,19 +160,18 @@ function handleExport(data) {
     }
   }
 
-  // 新規作成時は元テンプレートを絶対に上書きせず、フォルダ階層内に新しいスプレッドシートとしてコピー作成！
+  // IDがない、またはテンプレートタイプが変更された場合は、選択されたテンプレート（'normal3', 'sekou3', 'normal2'）から新しく生成！
   if (!ss) {
     const todayStr = new Date().toLocaleDateString('ja-JP').replace(/\//g, '');
     const exportFolderName = `工事写真台帳_${todayStr}`;
     
-    // フォルダ階層構造: 工事写真台帳 / 建物名称 / 工事内容 / 工事写真台帳_日付
     const rootFolder = getOrCreateFolder(DriveApp.getRootFolder(), ROOT_FOLDER_NAME);
     const buildingFolder = getOrCreateFolder(rootFolder, projectNameLine1 || '未設定');
     const workFolder = getOrCreateFolder(buildingFolder, projectNameLine2 || '未設定');
     mainFolder = workFolder.createFolder(exportFolderName);
     photosFolder = mainFolder.createFolder('写真');
     
-    // 該当テンプレートファイル（2枚用/3枚用/施工写真用）を複製して新しい台帳ファイルを生成
+    // 選択されたテンプレート（3枚用:1os1..., 施工写真:1j8N..., 2枚用:1bJk...）のファイルを複製
     const templateFile = DriveApp.getFileById(template.id);
     targetFile = templateFile.makeCopy(exportFolderName, mainFolder);
     ss = SpreadsheetApp.openById(targetFile.getId());

@@ -498,7 +498,7 @@ function App() {
     setPhotos([]);
     setProjectNameLine1('');
     setProjectNameLine2('');
-    setTemplateType('sekou3');
+    setTemplateType('normal3');
     setGlobalDisplayFields([...DEFAULT_DISPLAY_FIELDS]);
     setSelectedPhotoId(null);
     setLastExportedSpreadsheetId('');
@@ -625,7 +625,10 @@ function App() {
                     name="template"
                     value={opt.value}
                     checked={templateType === opt.value}
-                    onChange={() => setTemplateType(opt.value)}
+                    onChange={() => {
+                      setTemplateType(opt.value);
+                      setLastExportedSpreadsheetId('');
+                    }}
                   />
                   <span className="template-option-label">{opt.label}</span>
                   <span className="template-option-count">{opt.photosPerPage}枚/ページ</span>
