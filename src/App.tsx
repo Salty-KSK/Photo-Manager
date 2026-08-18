@@ -143,11 +143,9 @@ function App() {
   
   // Import states
   const [fileList, setFileList] = useState<{id: string, name: string, dateStr: string}[]>([]);
-  const [selectedFileId, setSelectedFileId] = useState('');
   const [isFetchingList, setIsFetchingList] = useState(false);
   
   const [isExporting, setIsExporting] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
   
   // Mobile sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -195,7 +193,6 @@ function App() {
       const result = await res.json();
       if (result.success && result.files) {
         setFileList(result.files);
-        setSelectedFileId('');
       } else {
         console.error('List error:', result.error);
       }
@@ -499,47 +496,7 @@ function App() {
     setCurrentView('home');
   };
 
-  const handleImport = async () => {
-    if (!selectedFileId) return;
-    setIsImporting(true);
-    try {
-      const res = await fetch(`${GAS_URL}?action=import&spreadsheetId=${selectedFileId}`);
-      const result = await res.json();
-      
-      if (result.data) {
-        setProjectNameLine1(result.data.projectNameLine1 || '');
-        setProjectNameLine2(result.data.projectNameLine2 || '');
-        if (result.data.templateType) {
-          setTemplateType(result.data.templateType);
-        }
-        // グローバル表示項目を復元（最初の写真のdisplayFieldsから）
-        if (result.data.photos?.[0]?.displayFields) {
-          setGlobalDisplayFields(result.data.photos[0].displayFields);
-        }
-        const restoredPhotos: PhotoData[] = (result.data.photos || []).map((p: any) => ({
-          ...p,
-          id: crypto.randomUUID(),
-          file: null,
-          previewUrl: p.imageUrl || '',
-          isBlank: !p.imageUrl,
-          testFields: p.testFields || {},
-          rotation: 0,
-          displayFields: p.displayFields || [...DEFAULT_DISPLAY_FIELDS],
-          locationNumber: p.locationNumber || '',
-        }));
-        setPhotos(restoredPhotos);
-        alert('データを読み込みました');
-        setIsSidebarOpen(false);
-      } else {
-        alert(result.error || '読み込みに失敗しました');
-      }
-    } catch (err) {
-      alert('インポート中にエラーが発生しました');
-      console.error(err);
-    } finally {
-      setIsImporting(false);
-    }
-  };
+
 
   const photoPages = chunkArray(photos, photosPerPage);
   const totalPhotos = photos.length;
@@ -577,8 +534,6 @@ function App() {
               ) : (
                 fileList.map((file) => (
                   <div key={file.id} className="home-file-item" onClick={async () => {
-                    setSelectedFileId(file.id);
-                    setIsImporting(true);
                     try {
                       const res = await fetch(`${GAS_URL}?action=import&spreadsheetId=${file.id}`);
                       const result = await res.json();
@@ -605,8 +560,6 @@ function App() {
                       }
                     } catch (err) {
                       alert('読み込み中にエラーが発生しました');
-                    } finally {
-                      setIsImporting(false);
                     }
                   }}>
                     <FileSpreadsheet size={20} />
