@@ -204,7 +204,7 @@ function handleExport(data) {
     if (photo.imageBase64) {
       try {
         const imageBlob = base64ToBlob(photo.imageBase64, `photo_${i + 1}`);
-        const imageUrl = insertImageIntoCell(sheet, `A${dataStartRow}`, imageBlob, photosFolder.getId());
+        const imageUrl = insertImageIntoCell(sheet, dataStartRow, template, imageBlob, photosFolder.getId());
         photoImageUrls[i] = imageUrl || '';
       } catch (err) {
         Logger.log('Image insertion error: ' + err.message);
@@ -472,7 +472,7 @@ function base64ToBlob(base64Data, fileName) {
   return Utilities.newBlob(raw, contentType, fileName + ext);
 }
 
-function insertImageIntoCell(sheet, cellRef, imageBlob, folderId) {
+function insertImageIntoCell(sheet, startRow, template, imageBlob, folderId) {
   const folder = DriveApp.getFolderById(folderId);
   const file = folder.createFile(imageBlob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -480,10 +480,20 @@ function insertImageIntoCell(sheet, cellRef, imageBlob, folderId) {
   const fileId = file.getId();
   const ucUrl = `https://drive.google.com/uc?id=${fileId}`;
   const displayUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
-  const cell = sheet.getRange(cellRef);
   
-  // モード2 (=IMAGE(url, 2)): 写真枠のサイズぴったりに合わせて枠内の白い隙間・余白を完全ゼロで表示
-  cell.setFormula(`=IMAGE("${ucUrl}", 2)`);
+  // ブロックごとの写真結合セルの行数を算出 (例: A5:B24 の20行分)
+  let rowSpan = 20;
+  if (template && template.contentRows === 19) {
+    rowSpan = 19;
+  }
+  const endRow = startRow + rowSpan - 1;
+  
+  // A列とB列の結合セル範囲(例: A5:B24)を取得し、結合を確実に維持
+  const photoRange = sheet.getRange(`A${startRow}:B${endRow}`);
+  photoRange.merge();
+  
+  // A:B結合写真枠の全領域ぴったりに隙間・余白なく画像を挿入
+  photoRange.setFormula(`=IMAGE("${ucUrl}", 2)`);
   
   return displayUrl;
 }
