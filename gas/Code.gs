@@ -12,11 +12,12 @@ const ROOT_FOLDER_NAME = '工事写真台帳';
 // フォルダがあれば取得、なければ作成
 function getOrCreateFolder(parent, name) {
   const p = parent || DriveApp.getRootFolder();
-  const folders = p.getFoldersByName(name);
+  const folderName = (name && String(name).trim()) ? String(name).trim() : '未設定';
+  const folders = p.getFoldersByName(folderName);
   if (folders.hasNext()) {
     return folders.next();
   }
-  return p.createFolder(name);
+  return p.createFolder(folderName);
 }
 
 // 初回権限一括承認用（GASエディタで「▶ 実行」）
