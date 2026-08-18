@@ -32,33 +32,43 @@ const TEST_TYPES = [
   { value: '通水試験', label: '通水試験' },
 ] as const;
 
-const TEST_TEMPLATES: Record<string, { description: string; fields: { key: string; label: string; placeholder?: string; type?: 'select' | 'text'; options?: {value: string; label: string}[] }[] }> = {
+const TEST_TEMPLATES: Record<string, { 
+  description: string; 
+  fields: { 
+    key: string; 
+    label: string; 
+    placeholder?: string; 
+    type?: 'select' | 'text' | 'combo'; 
+    units?: string[];
+    options?: {value: string; label: string}[];
+  }[] 
+}> = {
   '水圧試験': {
     description: '水圧試験',
     fields: [
-      { key: 'testPressure', label: '試験圧力', placeholder: '例: 1.0 Mpa' },
-      { key: 'holdTime', label: '保持時間', placeholder: '例: 24h以上' },
-      { key: 'startTime', label: '開始時間', placeholder: '例: 11:03' },
+      { key: 'testPressure', label: '試験圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.0' },
+      { key: 'holdTime', label: '保持時間', type: 'combo', units: ['時間', '分', 'h', 'min'], placeholder: '24' },
+      { key: 'startTime', label: '開始時間', placeholder: '11:03' },
       { key: 'pressureState', label: '撮影対象', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
-      { key: 'measuredPressure', label: '測定値', placeholder: '例: 1.0 Mpa' },
+      { key: 'measuredPressure', label: '測定値', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.0' },
     ]
   },
   '耐圧試験': {
     description: '耐圧試験',
     fields: [
-      { key: 'testPressure', label: '試験圧力', placeholder: '例: 1.75 Mpa' },
-      { key: 'holdTime', label: '保持時間', placeholder: '例: 10分以上' },
-      { key: 'startTime', label: '開始時間', placeholder: '例: 14:00' },
+      { key: 'testPressure', label: '試験圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.75' },
+      { key: 'holdTime', label: '保持時間', type: 'combo', units: ['分', '時間', '10分以上'], placeholder: '10' },
+      { key: 'startTime', label: '開始時間', placeholder: '14:00' },
       { key: 'pressureState', label: '撮影対象', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
-      { key: 'measuredPressure', label: '測定値', placeholder: '例: 1.75 Mpa' },
+      { key: 'measuredPressure', label: '測定値', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.75' },
     ]
   },
   '通水試験': {
     description: '通水試験',
     fields: [
-      { key: 'waterLocation', label: '注水場所', placeholder: '例: 5F系統' },
-      { key: 'waterAmount', label: '注水量', placeholder: '例: 500L' },
-      { key: 'waterStatus', label: '採水状況', placeholder: '例: 異常なし' },
+      { key: 'waterLocation', label: '注水場所', placeholder: '5F系統' },
+      { key: 'waterAmount', label: '注水量', type: 'combo', units: ['ℓ', 'L', 'm3'], placeholder: '500' },
+      { key: 'waterStatus', label: '採水状況', placeholder: '異常なし' },
     ]
   },
 };
@@ -931,7 +941,36 @@ function App() {
                                 <div key={f.key} className="info-row">
                                   <label>{f.label}</label>
                                   <div className="input-wrapper">
-                                    {f.type === 'select' ? (
+                                    {f.type === 'combo' ? (
+                                      <div className="combo-field-row" style={{ display: 'flex', gap: '0.4rem', width: '100%' }}>
+                                        <input 
+                                          type="text" 
+                                          placeholder={f.placeholder}
+                                          value={(photo.testFields[f.key] || '').split(' ')[0] || ''} 
+                                          onChange={(e) => {
+                                            const parts = (photo.testFields[f.key] || '').split(' ');
+                                            const currentUnit = parts[1] || f.units?.[0] || '';
+                                            const val = e.target.value ? `${e.target.value} ${currentUnit}`.trim() : '';
+                                            updateTestField(photo.id, f.key, val);
+                                          }} 
+                                          style={{ flex: 1 }}
+                                        />
+                                        <select
+                                          value={(photo.testFields[f.key] || '').split(' ')[1] || f.units?.[0] || ''}
+                                          onChange={(e) => {
+                                            const parts = (photo.testFields[f.key] || '').split(' ');
+                                            const currentNum = parts[0] || '';
+                                            const val = currentNum ? `${currentNum} ${e.target.value}`.trim() : e.target.value;
+                                            updateTestField(photo.id, f.key, val);
+                                          }}
+                                          style={{ width: '90px', flexShrink: 0 }}
+                                        >
+                                          {f.units?.map(u => (
+                                            <option key={u} value={u}>{u}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    ) : f.type === 'select' ? (
                                       <select
                                         value={photo.testFields[f.key] || ''}
                                         onChange={(e) => updateTestField(photo.id, f.key, e.target.value)}
