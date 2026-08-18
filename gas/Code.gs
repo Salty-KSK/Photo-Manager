@@ -110,8 +110,8 @@ function handleExport(data) {
     throw new Error('Invalid templateType');
   }
 
-  // ユーザー指定の該当テンプレートスプレッドシート（2枚用/3枚用/施工写真用）のIDをそのまま直接使用
-  const targetId = spreadsheetId || template.id;
+  // ユーザー指定の純粋な元テンプレートスプレッドシート本体のIDのみを常に使用（過去の変形された複製ファイルIDを完全遮断）
+  const targetId = template.id;
   const ss = SpreadsheetApp.openById(targetId);
   const sheet = ss.getSheets()[0];
   
