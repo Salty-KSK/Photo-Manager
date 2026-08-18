@@ -678,6 +678,7 @@ function App() {
               <p>右上の「選択して追加」ボタンをクリックするか、<br/>この画面のどこにでも写真をドラッグ＆ドロップしてください。</p>
             </div>
           ) : (
+            <>
             <div className="page-container">
               {photoPages.map((pagePhotos, pageIndex) => (
                 <div key={pageIndex} className="photo-page">
@@ -798,10 +799,9 @@ function App() {
                             <div className="info-row">
                               <label>場所</label>
                               <div className="input-wrapper">
-                                <textarea 
-                                  className="multiline-input"
+                                <input 
+                                  type="text"
                                   placeholder="場所を入力..."
-                                  rows={2}
                                   value={photo.location} 
                                   onChange={(e) => updatePhoto(photo.id, 'location', e.target.value)} 
                                 />
@@ -902,6 +902,34 @@ function App() {
                 </div>
               ))}
             </div>
+
+            {/* ページ追加ボタン */}
+            <button 
+              className="btn btn-secondary btn-full"
+              style={{ maxWidth: '850px', margin: '0 auto', padding: '1rem' }}
+              onClick={() => {
+                const newBlanks: PhotoData[] = Array.from({ length: photosPerPage }, () => ({
+                  id: crypto.randomUUID(),
+                  file: null,
+                  previewUrl: '',
+                  date: new Date().toISOString().split('T')[0],
+                  location: '',
+                  category: '',
+                  testType: '',
+                  description: '',
+                  testFields: {} as Record<string, string>,
+                  isBlank: true,
+                  rotation: 0,
+                  displayFields: [] as DisplayFieldKey[],
+                  locationNumber: '',
+                }));
+                setPhotos(prev => [...prev, ...newBlanks]);
+              }}
+            >
+              <Plus size={18} />
+              ページを追加
+            </button>
+            </>
           )}
         </div>
       </main>
