@@ -292,6 +292,42 @@ function handleExport(data) {
     }
   }
   
+  // 過去のメタデータから「前回保存されていたDrive画像ファイルID」のリストを保持
+  const previousFileIds = [];
+  const oldMetaSheet = ss.getSheetByName('_metadata');
+  if (oldMetaSheet) {
+    try {
+      const jsonStr = oldMetaSheet.getRange('A1').getValue();
+      if (jsonStr) {
+        const meta = JSON.parse(jsonStr);
+        (meta.photos || []).forEach(p => {
+          const url = p.imageUrl || '';
+          const match = url.match(/id=([a-zA-Z0-9_-]+)/);
+          if (match) previousFileIds.push(match[1]);
+        });
+      }
+    } catch (e) {
+      Logger.log('Previous meta parse error: ' + e.message);
+    }
+  }
+
+  // 今回の保存に残った画像ファイルIDのリスト
+  const currentFileIds = photoImageUrls.map(url => {
+    const match = (url || '').match(/id=([a-zA-Z0-9_-]+)/);
+    return match ? match[1] : null;
+  }).filter(Boolean);
+
+  // 前回存在したが、ページ削除等で今回不要になった画像ファイルをGoogle Drive上から自動でゴミ箱へ削除！
+  previousFileIds.forEach(oldId => {
+    if (!currentFileIds.includes(oldId)) {
+      try {
+        DriveApp.getFileById(oldId).setTrashed(true);
+      } catch (e) {
+        Logger.log('Failed to trash unused image file ' + oldId + ': ' + e.message);
+      }
+    }
+  });
+
   // _metadataシートにJSONデータを保存
   let metaSheet = ss.getSheetByName('_metadata');
   if (!metaSheet) {
