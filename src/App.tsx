@@ -571,6 +571,7 @@ function App() {
                           };
                         });
                         setPhotos(restoredPhotos);
+                        setLastExportedSpreadsheetId(file.id);
                         setCurrentView('editor');
                       } else {
                         alert(result.error || '読み込みに失敗しました');
@@ -730,7 +731,7 @@ function App() {
             <button 
               className="btn btn-primary" 
               onClick={handleExportPdf}
-              disabled={isExportingPdf || !lastExportedSpreadsheetId}
+              disabled={isExportingPdf}
               style={{ background: '#c62828' }}
             >
               {isExportingPdf ? 'PDF出力中...' : 'PDF出力'}
