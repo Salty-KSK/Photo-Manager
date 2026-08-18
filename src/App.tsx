@@ -39,7 +39,7 @@ const TEST_TEMPLATES: Record<string, {
     key: string; 
     label: string; 
     placeholder?: string; 
-    type?: 'select' | 'text' | 'combo'; 
+    type?: 'select' | 'text' | 'combo' | 'time_select'; 
     units?: string[];
     options?: {value: string; label: string}[];
   }[] 
@@ -47,21 +47,21 @@ const TEST_TEMPLATES: Record<string, {
   '水圧試験': {
     description: '水圧試験',
     fields: [
-      { key: 'testPressure', label: '試験圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.0' },
+      { key: 'designPressure', label: '設計圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.0' },
       { key: 'holdTime', label: '保持時間', type: 'combo', units: ['時間', '分', 'h', 'min'], placeholder: '24' },
-      { key: 'startTime', label: '開始時間', type: 'combo', units: ['時', '分', 'h', '11:00'], placeholder: '11:03' },
       { key: 'pressureState', label: '撮影対象', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
-      { key: 'measuredPressure', label: '測定値', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.0' },
+      { key: 'startTime', label: '開始時間', type: 'time_select' },
+      { key: 'testPressure', label: '試験圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.0' },
     ]
   },
   '耐圧試験': {
     description: '耐圧試験',
     fields: [
-      { key: 'testPressure', label: '試験圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.75' },
+      { key: 'designPressure', label: '設計圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.75' },
       { key: 'holdTime', label: '保持時間', type: 'combo', units: ['分', '時間', '10分以上'], placeholder: '10' },
-      { key: 'startTime', label: '開始時間', type: 'combo', units: ['時', '分', 'h', '14:00'], placeholder: '14:00' },
       { key: 'pressureState', label: '撮影対象', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
-      { key: 'measuredPressure', label: '測定値', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.75' },
+      { key: 'startTime', label: '開始時間', type: 'time_select' },
+      { key: 'testPressure', label: '試験圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.75' },
     ]
   },
   '通水試験': {
@@ -1025,6 +1025,36 @@ function App() {
                                         onChange={(e) => updateTestField(photo.id, f.key, e.target.value)}
                                         style={{ width: '140px' }}
                                       />
+                                    ) : f.type === 'time_select' ? (
+                                      <div className="time-select-row" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', width: '100%' }}>
+                                        <select
+                                          value={(photo.testFields[f.key] || '11:00').split(':')[0] || '11'}
+                                          onChange={(e) => {
+                                            const parts = (photo.testFields[f.key] || '11:00').split(':');
+                                            const currentMin = parts[1] || '00';
+                                            updateTestField(photo.id, f.key, `${e.target.value}:${currentMin}`);
+                                          }}
+                                          style={{ flex: 1 }}
+                                        >
+                                          {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => (
+                                            <option key={h} value={h}>{h} 時</option>
+                                          ))}
+                                        </select>
+                                        <span style={{ fontWeight: 'bold' }}>:</span>
+                                        <select
+                                          value={(photo.testFields[f.key] || '11:00').split(':')[1] || '00'}
+                                          onChange={(e) => {
+                                            const parts = (photo.testFields[f.key] || '11:00').split(':');
+                                            const currentHour = parts[0] || '11';
+                                            updateTestField(photo.id, f.key, `${currentHour}:${e.target.value}`);
+                                          }}
+                                          style={{ flex: 1 }}
+                                        >
+                                          {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
+                                            <option key={m} value={m}>{m} 分</option>
+                                          ))}
+                                        </select>
+                                      </div>
                                     ) : f.type === 'select' ? (
                                       <select
                                         value={photo.testFields[f.key] || ''}

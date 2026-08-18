@@ -618,9 +618,11 @@ function insertImageIntoCell(sheet, startRow, template, imageBlob, folderId) {
 
 function getFieldLabel(key) {
   const labels = {
+    'designPressure': '設計圧力',
     'testPressure': '試験圧力',
     'holdTime': '保持時間',
     'startTime': '開始時間',
+    'pressureState': '撮影対象',
     'startPressure': '始圧',
     'waterLocation': '注水場所',
     'waterAmount': '注水量',
