@@ -352,19 +352,23 @@ function handleExportPdf(data) {
     const parents = file.getParents();
     const folder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
     
-    // 高精度PDF出力設定: A4サイズ、縦向き、横幅フィット、余計なグリッド線非表示、中央揃え
+    // 高精度PDF出力設定: A4サイズ、縦向き、狭い余白（大きく表示）、横幅フィット、余計なガイド線非表示、中央揃え
     const pdfExportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?` +
       'exportFormat=pdf&format=pdf' +
-      '&size=a4' +                     // A4用紙サイズ
-      '&portrait=true' +               // 縦向き
-      '&fitw=true' +                   // 横幅を1ページに収める（自動適正拡大）
-      '&gridlines=false' +             // 不要なセルガイド線を消し綺麗な罫線のみ残す
-      '&printtitle=false' +            // タイトル非表示
-      '&sheetnames=false' +            // シート名非表示
-      '&pagenumbers=false' +           // ページ番号非表示
-      '&fittow=true' +                 // 幅に合わせる
-      '&horizontal_alignment=CENTER' + // 水平方向中央揃え
-      '&vertical_alignment=TOP' +      // 垂直方向上詰め
+      '&size=a4' +                         // A4用紙サイズ
+      '&portrait=true' +                   // 縦向き
+      '&fitw=true' +                       // 横幅を1ページに収める
+      '&gridlines=false' +                 // 不要なセルガイド線を消し綺麗な罫線のみ残す
+      '&printtitle=false' +                // タイトル非表示
+      '&sheetnames=false' +                // シート名非表示
+      '&pagenumbers=false' +               // ページ番号非表示
+      '&fittow=1' +                        // 横幅1ページにフィット拡大
+      '&top_margin=0.20' +                 // 上余白（約5mmに絞って最大表示）
+      '&bottom_margin=0.20' +              // 下余白
+      '&left_margin=0.20' +                // 左余白
+      '&right_margin=0.20' +               // 右余白
+      '&horizontal_alignment=CENTER' +     // 水平方向中央揃え
+      '&vertical_alignment=TOP' +          // 垂直方向上詰め
       '&attachment=false';
 
     const token = ScriptApp.getOAuthToken();
