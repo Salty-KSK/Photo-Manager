@@ -440,6 +440,7 @@ function App() {
         projectNameLine1,
         projectNameLine2,
         photos: photosData,
+        spreadsheetId: lastExportedSpreadsheetId || undefined,
       };
 
       const res = await fetch(GAS_URL, {

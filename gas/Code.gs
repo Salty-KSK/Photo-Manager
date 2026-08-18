@@ -103,26 +103,49 @@ function doPost(e) {
 }
 
 function handleExport(data) {
-  const { projectNameLine1, projectNameLine2, photos, templateType = 'normal3' } = data;
+  const { projectNameLine1, projectNameLine2, photos, templateType = 'normal3', spreadsheetId } = data;
   
   const template = TEMPLATES[templateType];
   if (!template) {
     throw new Error('Invalid templateType');
   }
 
-  const todayStr = new Date().toLocaleDateString('ja-JP').replace(/\//g, '');
-  const exportFolderName = `工事写真台帳_${todayStr}`;
-  
-  // フォルダ階層: 工事写真台帳 / 建物名称 / 工事内容 / 日付
-  const rootFolder = getOrCreateFolder(DriveApp.getRootFolder(), ROOT_FOLDER_NAME);
-  const buildingFolder = getOrCreateFolder(rootFolder, projectNameLine1 || '未設定');
-  const workFolder = getOrCreateFolder(buildingFolder, projectNameLine2 || '未設定');
-  const mainFolder = workFolder.createFolder(exportFolderName);
-  const photosFolder = mainFolder.createFolder('写真');
-  
-  const templateFile = DriveApp.getFileById(template.id);
-  const newFile = templateFile.makeCopy(exportFolderName, mainFolder);
-  const ss = SpreadsheetApp.openById(newFile.getId());
+  let ss;
+  let newFile;
+  let mainFolder;
+  let photosFolder;
+
+  // 既存スプレッドシートへの「上書き保存」処理
+  if (spreadsheetId) {
+    try {
+      newFile = DriveApp.getFileById(spreadsheetId);
+      ss = SpreadsheetApp.openById(spreadsheetId);
+      const parents = newFile.getParents();
+      mainFolder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
+      
+      const photoFolders = mainFolder.getFoldersByName('写真');
+      photosFolder = photoFolders.hasNext() ? photoFolders.next() : mainFolder.createFolder('写真');
+    } catch (e) {
+      Logger.log('Spreadsheet open error, fallback to new file: ' + e.message);
+    }
+  }
+
+  // IDがない・取得失敗時は新規作成
+  if (!ss) {
+    const todayStr = new Date().toLocaleDateString('ja-JP').replace(/\//g, '');
+    const exportFolderName = `工事写真台帳_${todayStr}`;
+    
+    const rootFolder = getOrCreateFolder(DriveApp.getRootFolder(), ROOT_FOLDER_NAME);
+    const buildingFolder = getOrCreateFolder(rootFolder, projectNameLine1 || '未設定');
+    const workFolder = getOrCreateFolder(buildingFolder, projectNameLine2 || '未設定');
+    mainFolder = workFolder.createFolder(exportFolderName);
+    photosFolder = mainFolder.createFolder('写真');
+    
+    const templateFile = DriveApp.getFileById(template.id);
+    newFile = templateFile.makeCopy(exportFolderName, mainFolder);
+    ss = SpreadsheetApp.openById(newFile.getId());
+  }
+
   const sheet = ss.getSheets()[0];
   
   const totalPhotos = photos.length;
