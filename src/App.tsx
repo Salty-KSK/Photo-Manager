@@ -3,6 +3,28 @@ import { useDropzone } from 'react-dropzone';
 import { Upload, X, FileSpreadsheet, ChevronUp, ChevronDown, ArrowUpDown, Menu, Plus, RefreshCw, RotateCw } from 'lucide-react';
 import './App.css';
 
+// テンプレートタイプ定義
+type TemplateType = 'sekou3' | 'normal3' | 'normal2';
+
+const TEMPLATE_OPTIONS: { value: TemplateType; label: string; photosPerPage: number }[] = [
+  { value: 'sekou3', label: '施工写真（3枚）', photosPerPage: 3 },
+  { value: 'normal3', label: '3枚用', photosPerPage: 3 },
+  { value: 'normal2', label: '2枚用', photosPerPage: 2 },
+];
+
+// 表示項目の定義
+const DISPLAY_FIELD_OPTIONS = [
+  { key: 'date', label: '日付' },
+  { key: 'location', label: '場所' },
+  { key: 'category', label: '種別' },
+  { key: 'description', label: '内容' },
+  { key: 'testDetails', label: '試験詳細' },
+] as const;
+
+type DisplayFieldKey = typeof DISPLAY_FIELD_OPTIONS[number]['key'];
+
+const DEFAULT_DISPLAY_FIELDS: DisplayFieldKey[] = ['date', 'location', 'category', 'description'];
+
 const TEST_TYPES = [
   { value: '', label: '選択なし' },
   { value: '水圧試験', label: '水圧試験' },
@@ -53,6 +75,8 @@ export interface PhotoData {
   testFields: Record<string, string>;
   isBlank: boolean;
   rotation: number;
+  displayFields: DisplayFieldKey[];
+  locationNumber: string;
 }
 
 const CATEGORIES = [
@@ -100,6 +124,9 @@ function App() {
   const [moveDialogTarget, setMoveDialogTarget] = useState<string | null>(null);
   const [moveToPosition, setMoveToPosition] = useState('');
   
+  // Template selection
+  const [templateType, setTemplateType] = useState<TemplateType>('sekou3');
+  
   // Import states
   const [fileList, setFileList] = useState<{id: string, name: string, dateStr: string}[]>([]);
   const [selectedFileId, setSelectedFileId] = useState('');
@@ -110,6 +137,10 @@ function App() {
   
   // Mobile sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Get photos per page based on template
+  const photosPerPage = TEMPLATE_OPTIONS.find(t => t.value === templateType)?.photosPerPage ?? 3;
+  const hasLocationNumber = templateType === 'normal3' || templateType === 'normal2';
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newPhotos = acceptedFiles.map(file => ({
@@ -124,13 +155,15 @@ function App() {
       testFields: {} as Record<string, string>,
       isBlank: false,
       rotation: 0,
+      displayFields: [...DEFAULT_DISPLAY_FIELDS],
+      locationNumber: "",
     }));
     setPhotos(prev => [...prev, ...newPhotos]);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
-    noClick: true, // Prevent clicking anywhere triggering the file dialog
+    noClick: true,
     noKeyboard: true,
     accept: {
       'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp']
@@ -144,7 +177,6 @@ function App() {
       const result = await res.json();
       if (result.success && result.files) {
         setFileList(result.files);
-        // リスト取得後に選択状態をクリア
         setSelectedFileId('');
       } else {
         console.error('List error:', result.error);
@@ -173,9 +205,15 @@ function App() {
             newFields[f.key] = p.testFields[f.key] || '';
           });
           updated.testFields = newFields;
+          // 試験区分を選択した場合、testDetailsを自動追加
+          if (!updated.displayFields.includes('testDetails')) {
+            updated.displayFields = [...updated.displayFields, 'testDetails'];
+          }
         } else {
           updated.description = '';
           updated.testFields = {};
+          // 試験区分を解除した場合、testDetailsを削除
+          updated.displayFields = updated.displayFields.filter(f => f !== 'testDetails');
         }
       }
       return updated;
@@ -186,6 +224,17 @@ function App() {
     setPhotos(prev => prev.map(p => {
       if (p.id !== id) return p;
       return { ...p, testFields: { ...p.testFields, [fieldKey]: value } };
+    }));
+  };
+
+  const toggleDisplayField = (id: string, fieldKey: DisplayFieldKey) => {
+    setPhotos(prev => prev.map(p => {
+      if (p.id !== id) return p;
+      const current = p.displayFields;
+      const updated = current.includes(fieldKey)
+        ? current.filter(f => f !== fieldKey)
+        : [...current, fieldKey];
+      return { ...p, displayFields: updated };
     }));
   };
 
@@ -277,7 +326,6 @@ function App() {
       reader.onloadend = () => {
         const img = new Image();
         img.onload = () => {
-          // 回転用の一時Canvasを作成
           const tempCanvas = document.createElement('canvas');
           const tempCtx = tempCanvas.getContext('2d');
           if (!tempCtx) {
@@ -293,7 +341,6 @@ function App() {
           tempCtx.rotate((rotation * Math.PI) / 180);
           tempCtx.drawImage(img, -img.width / 2, -img.height / 2);
 
-          // 正しい向きになった画像をベースにクロップ処理
           const targetRatio = 4 / 3;
           const sWidth = tempCanvas.width;
           const sHeight = tempCanvas.height;
@@ -350,6 +397,7 @@ function App() {
 
       const payload = {
         action: 'export',
+        templateType,
         projectNameLine1,
         projectNameLine2,
         photos: photosData,
@@ -385,17 +433,22 @@ function App() {
       if (result.data) {
         setProjectNameLine1(result.data.projectNameLine1 || '');
         setProjectNameLine2(result.data.projectNameLine2 || '');
+        if (result.data.templateType) {
+          setTemplateType(result.data.templateType);
+        }
         const restoredPhotos: PhotoData[] = (result.data.photos || []).map((p: any) => ({
           ...p,
           id: crypto.randomUUID(),
           file: null,
-          previewUrl: '', // URLs from GAS not supported yet without separate drive fetching
+          previewUrl: '',
           testFields: p.testFields || {},
           rotation: 0,
+          displayFields: p.displayFields || [...DEFAULT_DISPLAY_FIELDS],
+          locationNumber: p.locationNumber || '',
         }));
         setPhotos(restoredPhotos);
         alert('データを読み込みました');
-        setIsSidebarOpen(false); // Close sidebar on mobile
+        setIsSidebarOpen(false);
       } else {
         alert(result.error || '読み込みに失敗しました');
       }
@@ -407,7 +460,7 @@ function App() {
     }
   };
 
-  const photoPages = chunkArray(photos, 3);
+  const photoPages = chunkArray(photos, photosPerPage);
   const totalPhotos = photos.length;
 
   return (
@@ -422,6 +475,26 @@ function App() {
         </div>
         
         <div className="sidebar-content">
+          {/* テンプレート選択 */}
+          <div className="sidebar-section">
+            <h3>テンプレート</h3>
+            <div className="template-selector">
+              {TEMPLATE_OPTIONS.map(opt => (
+                <label key={opt.value} className={`template-option ${templateType === opt.value ? 'selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="template"
+                    value={opt.value}
+                    checked={templateType === opt.value}
+                    onChange={() => setTemplateType(opt.value)}
+                  />
+                  <span className="template-option-label">{opt.label}</span>
+                  <span className="template-option-count">{opt.photosPerPage}枚/ページ</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div className="sidebar-section">
             <h3>工事名称</h3>
             <div className="form-group">
@@ -615,6 +688,27 @@ function App() {
                         </div>
                         
                         <div className="photo-info" onClick={(e) => e.stopPropagation()}>
+                          {/* 表示項目チェックボックス */}
+                          <div className="display-fields-section">
+                            <div className="display-fields-label">表示項目</div>
+                            <div className="display-fields-checkboxes">
+                              {DISPLAY_FIELD_OPTIONS.map(opt => {
+                                // testDetailsは試験区分が選択されている場合のみ表示
+                                if (opt.key === 'testDetails' && !photo.testType) return null;
+                                return (
+                                  <label key={opt.key} className="display-field-checkbox">
+                                    <input
+                                      type="checkbox"
+                                      checked={photo.displayFields.includes(opt.key)}
+                                      onChange={() => toggleDisplayField(photo.id, opt.key)}
+                                    />
+                                    <span>{opt.label}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+
                           <div className="info-row">
                             <label>日付</label>
                             <div className="input-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -714,6 +808,21 @@ function App() {
                                   </div>
                                 </div>
                               ))}
+                            </div>
+                          )}
+
+                          {/* 撮影場所番号（2枚用・3枚用のみ） */}
+                          {hasLocationNumber && (
+                            <div className="info-row">
+                              <label>撮影場所No.</label>
+                              <div className="input-wrapper">
+                                <input
+                                  type="text"
+                                  placeholder="撮影場所番号..."
+                                  value={photo.locationNumber}
+                                  onChange={(e) => updatePhoto(photo.id, 'locationNumber', e.target.value)}
+                                />
+                              </div>
                             </div>
                           )}
                         </div>
