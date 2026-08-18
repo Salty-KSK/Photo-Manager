@@ -1,16 +1,31 @@
 /**
  * 工事写真台帳 - Google Apps Script バックエンド
+ * 
+ * Required OAuth Scopes:
+ * DriveApp: https://www.googleapis.com/auth/drive
+ * SpreadsheetApp: https://www.googleapis.com/auth/spreadsheets
+ * UrlFetchApp: https://www.googleapis.com/auth/script.external_request
  */
 
 const ROOT_FOLDER_NAME = '工事写真台帳';
 
 // フォルダがあれば取得、なければ作成
 function getOrCreateFolder(parent, name) {
-  const folders = parent.getFoldersByName(name);
+  const p = parent || DriveApp.getRootFolder();
+  const folders = p.getFoldersByName(name);
   if (folders.hasNext()) {
     return folders.next();
   }
-  return parent.createFolder(name);
+  return p.createFolder(name);
+}
+
+// 初回権限一括承認用（GASエディタで「▶ 実行」）
+function authorizeAll() {
+  const root = DriveApp.getRootFolder();
+  Logger.log('Drive権限 OK: ' + root.getName());
+  UrlFetchApp.fetch('https://www.google.com');
+  Logger.log('UrlFetch権限 OK');
+  Logger.log('すべての権限の承認が完了しました！');
 }
 
 const TEMPLATES = {
