@@ -147,7 +147,35 @@ function IndividualDropzone({ onDropBlock }: { onDropBlock: (file: File) => void
 type ViewMode = 'home' | 'editor';
 
 function App() {
-  const [currentView, setCurrentView] = useState<ViewMode>('home');
+  // App-level clipboard for Content & Test details
+  const [clipboardData, setClipboardData] = useState<{
+    description: string;
+    testType: string;
+    testFields: Record<string, string>;
+  } | null>(null);
+
+  const handleCopyToClipboard = (photo: PhotoData) => {
+    setClipboardData({
+      description: photo.description || '',
+      testType: photo.testType || '',
+      testFields: { ...(photo.testFields || {}) },
+    });
+  };
+
+  const handlePasteFromClipboard = (targetPhotoId: string) => {
+    if (!clipboardData) return;
+    setPhotos(prev => prev.map(p => {
+      if (p.id === targetPhotoId) {
+        return {
+          ...p,
+          description: clipboardData.description,
+          testType: clipboardData.testType,
+          testFields: { ...clipboardData.testFields },
+        };
+      }
+      return p;
+    }));
+  };
   const [lastExportedSpreadsheetId, setLastExportedSpreadsheetId] = useState('');
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [photos, setPhotos] = useState<PhotoData[]>([]);
@@ -835,31 +863,8 @@ function App() {
                         className={`photo-item ${isSelected ? 'photo-item-selected' : ''} ${photo.isBlank ? 'photo-item-blank' : ''}`}
                         onClick={() => setSelectedPhotoId(isSelected ? null : photo.id)}
                       >
-                        <div className="photo-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', width: '100%' }}>
-                          <div className="photo-number-badge" style={{ position: 'static' }}>
-                            {globalIndex + 1}/{totalPhotos}
-                          </div>
-                          
-                          <div className="photo-quick-actions" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
-                            {globalIndex > 0 && (
-                              <button
-                                type="button"
-                                className="action-pill-btn"
-                                title="上の写真から「内容」と「試験詳細」をコピー"
-                                onClick={() => copyFromPrevious(photo.id, globalIndex)}
-                              >
-                                📋 上からコピー
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className="action-pill-btn primary"
-                              title="すべての写真へ「内容」と「試験詳細」を一括反映"
-                              onClick={() => copyToAll(photo)}
-                            >
-                              ✨ 全枠へ一括反映
-                            </button>
-                          </div>
+                        <div className="photo-number-badge">
+                          {globalIndex + 1}/{totalPhotos}
                         </div>
 
                         {isSelected && (
@@ -1151,6 +1156,28 @@ function App() {
                               </div>
                             </div>
                           )}
+
+                          {/* 撮影場所の下に配置する クリップボード コピー＆ペーストツールバー */}
+                          <div className="clipboard-toolbar" style={{ display: 'flex', gap: '0.6rem', marginTop: '0.8rem', paddingTop: '0.8rem', borderTop: '1px dashed #d0d7de', width: '100%' }}>
+                            <button
+                              type="button"
+                              className="btn-clipboard copy"
+                              onClick={() => handleCopyToClipboard(photo)}
+                              style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.6rem 0.8rem', fontSize: '0.82rem', fontWeight: 600, color: '#0066cc', background: '#eef6ff', border: '1px solid #007aff60', borderRadius: '6px', cursor: 'pointer' }}
+                            >
+                              📋 この内容・詳細をコピー
+                            </button>
+                            
+                            <button
+                              type="button"
+                              className="btn-clipboard paste"
+                              disabled={!clipboardData}
+                              onClick={() => handlePasteFromClipboard(photo.id)}
+                              style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.6rem 0.8rem', fontSize: '0.82rem', fontWeight: 600, color: clipboardData ? '#1b702d' : '#8c8c8c', background: clipboardData ? '#eaf5ea' : '#f2f2f2', border: `1px solid ${clipboardData ? '#34c759' : '#cccccc'}`, borderRadius: '6px', cursor: clipboardData ? 'pointer' : 'not-allowed', opacity: clipboardData ? 1 : 0.6 }}
+                            >
+                              📥 この枠へ貼り付け (ペースト)
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
