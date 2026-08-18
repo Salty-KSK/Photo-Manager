@@ -142,7 +142,7 @@ function App() {
   const [globalDisplayFields, setGlobalDisplayFields] = useState<DisplayFieldKey[]>([...DEFAULT_DISPLAY_FIELDS]);
   
   // Import states
-  const [fileList, setFileList] = useState<{id: string, name: string, dateStr: string}[]>([]);
+  const [fileList, setFileList] = useState<{id: string, name: string, buildingName?: string, workName?: string, dateStr: string}[]>([]);
   const [isFetchingList, setIsFetchingList] = useState(false);
   
   const [isExporting, setIsExporting] = useState(false);
@@ -562,9 +562,15 @@ function App() {
                       alert('読み込み中にエラーが発生しました');
                     }
                   }}>
-                    <FileSpreadsheet size={20} />
+                    <FileSpreadsheet size={24} style={{ flexShrink: 0, color: 'var(--sys-blue)' }} />
                     <div className="home-file-info">
                       <span className="home-file-name">{file.name}</span>
+                      {(file.buildingName || file.workName) && (
+                        <div className="home-file-meta">
+                          {file.buildingName && <span className="home-file-tag building">{file.buildingName}</span>}
+                          {file.workName && <span className="home-file-tag work">{file.workName}</span>}
+                        </div>
+                      )}
                       <span className="home-file-date">{file.dateStr}</span>
                     </div>
                   </div>

@@ -1024,6 +1024,32 @@ select {
   color: var(--sys-text-muted);
 }
 
+.home-file-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.15rem 0;
+  flex-wrap: wrap;
+}
+
+.home-file-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.home-file-tag.building {
+  background: rgba(0, 122, 255, 0.1);
+  color: #0066cc;
+}
+
+.home-file-tag.work {
+  background: rgba(52, 199, 89, 0.12);
+  color: #1b702d;
+}
+
 .spinning {
   animation: spin 1s linear infinite;
 }

@@ -260,16 +260,42 @@ function handleImport(spreadsheetId) {
 
 function handleList() {
   try {
-    const query = "title contains '工事写真台帳_' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false";
+    const templateIds = Object.values(TEMPLATES).map(t => t.id);
+    const query = "title contains '工事写真台帳' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false";
     const files = DriveApp.searchFiles(query);
     const fileList = [];
     
     let count = 0;
-    while (files.hasNext() && count < 20) {
+    while (files.hasNext() && count < 30) {
       const file = files.next();
+      const fileId = file.getId();
+      
+      // テンプレート用スプレッドシートは除外
+      if (templateIds.includes(fileId)) continue;
+      
+      let buildingName = '';
+      let workName = '';
+      
+      try {
+        const ss = SpreadsheetApp.openById(fileId);
+        const metaSheet = ss.getSheetByName('_metadata');
+        if (metaSheet) {
+          const jsonStr = metaSheet.getRange('A1').getValue();
+          if (jsonStr) {
+            const meta = JSON.parse(jsonStr);
+            buildingName = meta.projectNameLine1 || '';
+            workName = meta.projectNameLine2 || '';
+          }
+        }
+      } catch (e) {
+        // メタデータがない・読み込めない場合はスルー
+      }
+      
       fileList.push({
-        id: file.getId(),
+        id: fileId,
         name: file.getName(),
+        buildingName: buildingName,
+        workName: workName,
         date: file.getDateCreated().getTime()
       });
       count++;
@@ -283,6 +309,8 @@ function handleList() {
       return {
         id: item.id,
         name: item.name,
+        buildingName: item.buildingName,
+        workName: item.workName,
         dateStr: dateStr
       };
     });
