@@ -1,3 +1,4 @@
+// 工事写真台帳 Web App - Version 1.0.5
 import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, X, FileSpreadsheet, ChevronUp, ChevronDown, ArrowUpDown, Menu, Plus, RefreshCw, RotateCw, Trash2, Home, FilePlus } from 'lucide-react';
