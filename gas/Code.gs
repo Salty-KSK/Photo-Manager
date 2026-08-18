@@ -244,7 +244,7 @@ function handleExport(data) {
   return ContentService.createTextOutput(JSON.stringify({ 
     success: true, 
     url: url,
-    spreadsheetId: newFile.getId()
+    spreadsheetId: targetId
   })).setMimeType(ContentService.MimeType.JSON);
 }
 
