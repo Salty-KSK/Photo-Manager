@@ -48,7 +48,7 @@ const TEST_TEMPLATES: Record<string, {
     fields: [
       { key: 'testPressure', label: '試験圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.0' },
       { key: 'holdTime', label: '保持時間', type: 'combo', units: ['時間', '分', 'h', 'min'], placeholder: '24' },
-      { key: 'startTime', label: '開始時間', type: 'time', placeholder: '11:03' },
+      { key: 'startTime', label: '開始時間', type: 'combo', units: ['時', '分', 'h', '11:00'], placeholder: '11:03' },
       { key: 'pressureState', label: '撮影対象', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
       { key: 'measuredPressure', label: '測定値', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.0' },
     ]
@@ -58,7 +58,7 @@ const TEST_TEMPLATES: Record<string, {
     fields: [
       { key: 'testPressure', label: '試験圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.75' },
       { key: 'holdTime', label: '保持時間', type: 'combo', units: ['分', '時間', '10分以上'], placeholder: '10' },
-      { key: 'startTime', label: '開始時間', type: 'time', placeholder: '14:00' },
+      { key: 'startTime', label: '開始時間', type: 'combo', units: ['時', '分', 'h', '14:00'], placeholder: '14:00' },
       { key: 'pressureState', label: '撮影対象', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
       { key: 'measuredPressure', label: '測定値', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.75' },
     ]
@@ -922,53 +922,60 @@ function App() {
                           
                           {globalDisplayFields.includes('description') && (
                             <div className="info-row description-multi-row">
-                              <label>内容</label>
-                              <div className="input-wrapper description-lines-wrapper">
+                              <label style={{ fontWeight: 600, color: 'var(--sys-blue)' }}>内容</label>
+                              <div className="input-wrapper description-lines-card" style={{ background: '#f5f7fa', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e1e4e8', width: '100%' }}>
                                 {(() => {
                                   const rawDesc = photo.description ?? '';
                                   const lines = rawDesc ? rawDesc.split('\n') : [''];
-                                  return lines.map((descLine, lineIndex) => (
-                                    <div key={lineIndex} className="desc-line-item">
-                                      <span className="desc-line-num">{lineIndex + 1}行目</span>
-                                      <input
-                                        type="text"
-                                        placeholder={`内容 (${lineIndex + 1}行目)...`}
-                                        value={descLine}
-                                        onChange={(e) => {
-                                          const newLines = [...lines];
-                                          newLines[lineIndex] = e.target.value;
-                                          updatePhoto(photo.id, 'description', newLines.join('\n'));
+                                  return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                      {lines.map((descLine, lineIndex) => (
+                                        <div key={lineIndex} className="desc-line-item" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#fff', padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid #d0d7de' }}>
+                                          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#0066cc', background: '#e6f2ff', padding: '0.2rem 0.5rem', borderRadius: '4px', flexShrink: 0 }}>
+                                            {lineIndex + 1}行目
+                                          </span>
+                                          <input
+                                            type="text"
+                                            placeholder={`内容（${lineIndex + 1}行目の文章を入力...）`}
+                                            value={descLine}
+                                            onChange={(e) => {
+                                              const newLines = [...lines];
+                                              newLines[lineIndex] = e.target.value;
+                                              updatePhoto(photo.id, 'description', newLines.join('\n'));
+                                            }}
+                                            style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '0.9rem' }}
+                                          />
+                                          {lines.length > 1 && (
+                                            <button
+                                              type="button"
+                                              title="この行を削除"
+                                              onClick={() => {
+                                                const newLines = lines.filter((_, idx) => idx !== lineIndex);
+                                                updatePhoto(photo.id, 'description', newLines.join('\n'));
+                                              }}
+                                              style={{ background: '#fff0f0', border: '1px solid #ffcdd2', color: '#d32f2f', padding: '0.25rem 0.4rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                            >
+                                              <X size={14} />
+                                            </button>
+                                          )}
+                                        </div>
+                                      ))}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const rawDesc = photo.description ?? '';
+                                          const lines = rawDesc ? rawDesc.split('\n') : [''];
+                                          lines.push('');
+                                          updatePhoto(photo.id, 'description', lines.join('\n'));
                                         }}
-                                      />
-                                      {lines.length > 1 && (
-                                        <button
-                                          type="button"
-                                          className="btn-remove-line"
-                                          title="この行を削除"
-                                          onClick={() => {
-                                            const newLines = lines.filter((_, idx) => idx !== lineIndex);
-                                            updatePhoto(photo.id, 'description', newLines.join('\n'));
-                                          }}
-                                        >
-                                          <X size={14} />
-                                        </button>
-                                      )}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.8rem', fontSize: '0.8rem', fontWeight: 600, color: '#0066cc', background: '#ffffff', border: '1px dashed #0066cc', borderRadius: '6px', cursor: 'pointer', alignSelf: 'flex-start', marginTop: '0.2rem' }}
+                                      >
+                                        <Plus size={14} />
+                                        ＋ 内容の行を追加
+                                      </button>
                                     </div>
-                                  ));
+                                  );
                                 })()}
-                                <button
-                                  type="button"
-                                  className="btn-add-line"
-                                  onClick={() => {
-                                    const rawDesc = photo.description ?? '';
-                                    const lines = rawDesc ? rawDesc.split('\n') : [''];
-                                    lines.push('');
-                                    updatePhoto(photo.id, 'description', lines.join('\n'));
-                                  }}
-                                >
-                                  <Plus size={14} />
-                                  内容の行を追加
-                                </button>
                               </div>
                             </div>
                           )}
