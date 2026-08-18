@@ -127,6 +127,9 @@ function App() {
   // Template selection
   const [templateType, setTemplateType] = useState<TemplateType>('sekou3');
   
+  // Global display fields
+  const [globalDisplayFields, setGlobalDisplayFields] = useState<DisplayFieldKey[]>([...DEFAULT_DISPLAY_FIELDS]);
+  
   // Import states
   const [fileList, setFileList] = useState<{id: string, name: string, dateStr: string}[]>([]);
   const [selectedFileId, setSelectedFileId] = useState('');
@@ -155,7 +158,7 @@ function App() {
       testFields: {} as Record<string, string>,
       isBlank: false,
       rotation: 0,
-      displayFields: [...DEFAULT_DISPLAY_FIELDS],
+      displayFields: [] as DisplayFieldKey[],
       locationNumber: "",
     }));
     setPhotos(prev => [...prev, ...newPhotos]);
@@ -206,14 +209,12 @@ function App() {
           });
           updated.testFields = newFields;
           // 試験区分を選択した場合、testDetailsを自動追加
-          if (!updated.displayFields.includes('testDetails')) {
-            updated.displayFields = [...updated.displayFields, 'testDetails'];
+          if (!globalDisplayFields.includes('testDetails')) {
+            setGlobalDisplayFields(prev => [...prev, 'testDetails']);
           }
         } else {
           updated.description = '';
           updated.testFields = {};
-          // 試験区分を解除した場合、testDetailsを削除
-          updated.displayFields = updated.displayFields.filter(f => f !== 'testDetails');
         }
       }
       return updated;
@@ -227,16 +228,16 @@ function App() {
     }));
   };
 
-  const toggleDisplayField = (id: string, fieldKey: DisplayFieldKey) => {
-    setPhotos(prev => prev.map(p => {
-      if (p.id !== id) return p;
-      const current = p.displayFields;
-      const updated = current.includes(fieldKey)
-        ? current.filter(f => f !== fieldKey)
-        : [...current, fieldKey];
-      return { ...p, displayFields: updated };
-    }));
+  const toggleGlobalDisplayField = (fieldKey: DisplayFieldKey) => {
+    setGlobalDisplayFields(prev => 
+      prev.includes(fieldKey)
+        ? prev.filter(f => f !== fieldKey)
+        : [...prev, fieldKey]
+    );
   };
+
+  // 試験区分を持つ写真があるかどうか
+  const hasAnyTestType = photos.some(p => p.testType !== '');
 
   const showDeleteDialog = (id: string) => { setDeleteDialogTarget(id); };
 
@@ -392,7 +393,7 @@ function App() {
         if (p.file && !p.isBlank) {
           imageBase64 = await rotateAndCropImage(p.file, p.rotation || 0);
         }
-        return { ...p, file: undefined, previewUrl: undefined, imageBase64 };
+        return { ...p, file: undefined, previewUrl: undefined, imageBase64, displayFields: [...globalDisplayFields] };
       }));
 
       const payload = {
@@ -435,6 +436,10 @@ function App() {
         setProjectNameLine2(result.data.projectNameLine2 || '');
         if (result.data.templateType) {
           setTemplateType(result.data.templateType);
+        }
+        // グローバル表示項目を復元（最初の写真のdisplayFieldsから）
+        if (result.data.photos?.[0]?.displayFields) {
+          setGlobalDisplayFields(result.data.photos[0].displayFields);
         }
         const restoredPhotos: PhotoData[] = (result.data.photos || []).map((p: any) => ({
           ...p,
@@ -492,6 +497,28 @@ function App() {
                   <span className="template-option-count">{opt.photosPerPage}枚/ページ</span>
                 </label>
               ))}
+            </div>
+          </div>
+
+          {/* 表示項目チェックボックス */}
+          <div className="sidebar-section">
+            <h3>表示項目</h3>
+            <div className="display-fields-section">
+              <div className="display-fields-checkboxes">
+                {DISPLAY_FIELD_OPTIONS.map(opt => {
+                  if (opt.key === 'testDetails' && !hasAnyTestType) return null;
+                  return (
+                    <label key={opt.key} className="display-field-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={globalDisplayFields.includes(opt.key)}
+                        onChange={() => toggleGlobalDisplayField(opt.key)}
+                      />
+                      <span>{opt.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -688,73 +715,58 @@ function App() {
                         </div>
                         
                         <div className="photo-info" onClick={(e) => e.stopPropagation()}>
-                          {/* 表示項目チェックボックス */}
-                          <div className="display-fields-section">
-                            <div className="display-fields-label">表示項目</div>
-                            <div className="display-fields-checkboxes">
-                              {DISPLAY_FIELD_OPTIONS.map(opt => {
-                                // testDetailsは試験区分が選択されている場合のみ表示
-                                if (opt.key === 'testDetails' && !photo.testType) return null;
-                                return (
-                                  <label key={opt.key} className="display-field-checkbox">
-                                    <input
-                                      type="checkbox"
-                                      checked={photo.displayFields.includes(opt.key)}
-                                      onChange={() => toggleDisplayField(photo.id, opt.key)}
-                                    />
-                                    <span>{opt.label}</span>
-                                  </label>
-                                );
-                              })}
+                          {globalDisplayFields.includes('date') && (
+                            <div className="info-row">
+                              <label>日付</label>
+                              <div className="input-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <input 
+                                  type="date" 
+                                  value={photo.date} 
+                                  onChange={(e) => updatePhoto(photo.id, 'date', e.target.value)} 
+                                  style={{ flex: 1 }}
+                                />
+                                <button 
+                                  type="button"
+                                  className="btn-icon" 
+                                  onClick={(e) => { e.stopPropagation(); updatePhoto(photo.id, 'date', ''); }}
+                                  title="日付をクリア"
+                                  style={{ padding: '0.5rem', background: 'var(--sys-bg)', border: '1px solid var(--sys-border)' }}
+                                >
+                                  <X size={16} />
+                                </button>
+                              </div>
                             </div>
-                          </div>
-
-                          <div className="info-row">
-                            <label>日付</label>
-                            <div className="input-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <input 
-                                type="date" 
-                                value={photo.date} 
-                                onChange={(e) => updatePhoto(photo.id, 'date', e.target.value)} 
-                                style={{ flex: 1 }}
-                              />
-                              <button 
-                                type="button"
-                                className="btn-icon" 
-                                onClick={(e) => { e.stopPropagation(); updatePhoto(photo.id, 'date', ''); }}
-                                title="日付をクリア"
-                                style={{ padding: '0.5rem', background: 'var(--sys-bg)', border: '1px solid var(--sys-border)' }}
+                          )}
+                          
+                          {globalDisplayFields.includes('location') && (
+                            <div className="info-row">
+                              <label>場所</label>
+                              <div className="input-wrapper">
+                                <textarea 
+                                  className="multiline-input"
+                                  placeholder="場所を入力..."
+                                  rows={2}
+                                  value={photo.location} 
+                                  onChange={(e) => updatePhoto(photo.id, 'location', e.target.value)} 
+                                />
+                              </div>
+                            </div>
+                          )}
+                          
+                          {globalDisplayFields.includes('category') && (
+                            <div className="info-row">
+                              <label>種別</label>
+                              <select 
+                                value={photo.category} 
+                                onChange={(e) => updatePhoto(photo.id, 'category', e.target.value)}
                               >
-                                <X size={16} />
-                              </button>
+                                <option value="">選択してください</option>
+                                {CATEGORIES.map(cat => (
+                                  <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                              </select>
                             </div>
-                          </div>
-                          
-                          <div className="info-row">
-                            <label>場所</label>
-                            <div className="input-wrapper">
-                              <textarea 
-                                className="multiline-input"
-                                placeholder="場所を入力..."
-                                rows={2}
-                                value={photo.location} 
-                                onChange={(e) => updatePhoto(photo.id, 'location', e.target.value)} 
-                              />
-                            </div>
-                          </div>
-                          
-                          <div className="info-row">
-                            <label>種別</label>
-                            <select 
-                              value={photo.category} 
-                              onChange={(e) => updatePhoto(photo.id, 'category', e.target.value)}
-                            >
-                              <option value="">選択してください</option>
-                              {CATEGORIES.map(cat => (
-                                <option key={cat} value={cat}>{cat}</option>
-                              ))}
-                            </select>
-                          </div>
+                          )}
 
                           <div className="info-row">
                             <label>試験区分</label>
@@ -768,19 +780,21 @@ function App() {
                             </select>
                           </div>
                           
-                          <div className="info-row">
-                            <label>内容</label>
-                            <div className="input-wrapper">
-                              <textarea 
-                                placeholder="内容を入力..."
-                                rows={2}
-                                value={photo.description} 
-                                onChange={(e) => updatePhoto(photo.id, 'description', e.target.value)} 
-                              />
+                          {globalDisplayFields.includes('description') && (
+                            <div className="info-row">
+                              <label>内容</label>
+                              <div className="input-wrapper">
+                                <textarea 
+                                  placeholder="内容を入力..."
+                                  rows={2}
+                                  value={photo.description} 
+                                  onChange={(e) => updatePhoto(photo.id, 'description', e.target.value)} 
+                                />
+                              </div>
                             </div>
-                          </div>
+                          )}
 
-                          {template && (
+                          {template && globalDisplayFields.includes('testDetails') && (
                             <div className="test-fields-card">
                               <div className="test-fields-header">{photo.testType} 詳細</div>
                               {template.fields.map(f => (
