@@ -150,31 +150,48 @@ function handleExport(data) {
 
   const sheet = ss.getSheets()[0];
   const targetId = ss.getId();
+  const templateSheet = ss.getSheets()[0];
   
   const totalPhotos = photos.length;
-  const existingBlocks = template.blocksPerPage;
+  const blocksPerPage = template.blocksPerPage;
+  const pageCount = Math.max(1, Math.ceil(totalPhotos / blocksPerPage));
   
-  if (totalPhotos > existingBlocks) {
-    const block1StartRow = template.firstDataRow - (template.hasBlockHeader ? 1 : 0);
-    const block1Range = sheet.getRange(block1StartRow, 1, template.blockDataSize, 4); // A:D
-    
-    for (let i = existingBlocks; i < totalPhotos; i++) {
-      const dataStartRow = template.firstDataRow + i * template.blockDataSize;
-      const blockStartRow = dataStartRow - (template.hasBlockHeader ? 1 : 0);
-      
-      sheet.insertRowsAfter(blockStartRow - 1, template.blockDataSize);
-      const targetRange = sheet.getRange(blockStartRow, 1);
-      block1Range.copyTo(targetRange);
-      
-      // コピーしたブロックの内容をクリア
-      sheet.getRange(`A${dataStartRow}`).clearContent();
-      sheet.getRange(dataStartRow, 3, template.contentRows, 1).clearContent();
-      
-      if (template.hasLocationNumber) {
-        sheet.getRange(dataStartRow + template.locationNumberOffset, 3, 2, 1).clearContent();
-      }
+  // 必要なページ数ぶんタブ（シート）を用意し、足りない分はテンプレートタブを直接複製！
+  const sheets = [templateSheet];
+  templateSheet.setName('ページ1');
+  
+  // 既存の不要なコピーシートがあればクリアまたは再利用
+  const allSheets = ss.getSheets();
+  for (let p = 1; p < pageCount; p++) {
+    if (p < allSheets.length) {
+      sheets.push(allSheets[p]);
+    } else {
+      const newSheet = templateSheet.copyTo(ss).setName(`ページ${p + 1}`);
+      sheets.push(newSheet);
     }
   }
+  
+  // 各シートのヘッダー（A1:C1 = 建物名称, A2:C2 = 工事内容）の書き込みおよび初期化
+  sheets.forEach((sh, sheetIdx) => {
+    if (projectNameLine1) {
+      sh.getRange('A1:C1').setValue(projectNameLine1);
+    }
+    if (projectNameLine2) {
+      sh.getRange('A2:C2').setValue(projectNameLine2);
+    }
+    
+    // 2枚目以降の複製タブの場合、古いデータ内容をクリア
+    if (sheetIdx > 0) {
+      for (let b = 0; b < blocksPerPage; b++) {
+        const dataStartRow = template.firstDataRow + b * template.blockDataSize;
+        sh.getRange(`A${dataStartRow}`).clearContent();
+        sh.getRange(dataStartRow, 3, template.contentRows, 1).clearContent();
+        if (template.hasLocationNumber) {
+          sh.getRange(dataStartRow + template.locationNumberOffset, 3, 2, 1).clearContent();
+        }
+      }
+    }
+  });
   
   // 写真URLを記録する配列
   const photoImageUrls = new Array(totalPhotos).fill('');
@@ -183,7 +200,11 @@ function handleExport(data) {
     const photo = photos[i];
     if (photo.isBlank) continue;
     
-    const dataStartRow = template.firstDataRow + i * template.blockDataSize;
+    const p = Math.floor(i / blocksPerPage);
+    const b = i % blocksPerPage;
+    const targetSheet = sheets[p];
+    
+    const dataStartRow = template.firstDataRow + b * template.blockDataSize;
     
     // 内容書き込み (C列に1行ずつ順番に)
     const fieldsToWrite = [];
@@ -218,25 +239,24 @@ function handleExport(data) {
     }
     
     for (let j = 0; j < fieldsToWrite.length && j < template.contentRows; j++) {
-      sheet.getRange(dataStartRow + j, 3).setValue(fieldsToWrite[j]);
+      targetSheet.getRange(dataStartRow + j, 3).setValue(fieldsToWrite[j]);
     }
     
     // 撮影場所番号の書き込み
     if (template.hasLocationNumber && photo.locationNumber) {
-      sheet.getRange(dataStartRow + template.locationNumberOffset, 3).setValue(photo.locationNumber);
+      targetSheet.getRange(dataStartRow + template.locationNumberOffset, 3).setValue(photo.locationNumber);
     }
     
-    // 写真の挿入
+    // 写真の挿入 (該当タブシートの対象ブロックへ)
     if (photo.imageBase64) {
       try {
         const imageBlob = base64ToBlob(photo.imageBase64, `photo_${i + 1}`);
-        const imageUrl = insertImageIntoCell(sheet, dataStartRow, template, imageBlob, photosFolder.getId());
+        const imageUrl = insertImageIntoCell(targetSheet, dataStartRow, template, imageBlob, photosFolder.getId());
         photoImageUrls[i] = imageUrl || '';
       } catch (err) {
         Logger.log('Image insertion error: ' + err.message);
       }
     } else if (photo.imageUrl) {
-      // 既存のDrive画像URLを維持
       photoImageUrls[i] = photo.imageUrl;
     }
   }
