@@ -459,12 +459,8 @@ function insertImageIntoCell(sheet, cellRef, imageBlob, folderId) {
   const displayUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
   const cell = sheet.getRange(cellRef);
   
-  try {
-    const image = SpreadsheetApp.newCellImage().setSourceUrl(ucUrl).build();
-    cell.setValue(image);
-  } catch (e) {
-    cell.setFormula(`=IMAGE("${ucUrl}", 1)`);
-  }
+  // モード2 (=IMAGE(url, 2)): セルの枠線サイズぴったりに合わせて隙間・余白を完全解消
+  cell.setFormula(`=IMAGE("${ucUrl}", 2)`);
   
   return displayUrl;
 }
