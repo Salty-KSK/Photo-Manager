@@ -110,16 +110,46 @@ function handleExport(data) {
     throw new Error('Invalid templateType');
   }
 
-  // ユーザー指定の純粋な元テンプレートスプレッドシート本体のIDのみを常に使用（過去の変形された複製ファイルIDを完全遮断）
-  const targetId = template.id;
-  const ss = SpreadsheetApp.openById(targetId);
+  let ss;
+  let targetFile;
+  let mainFolder;
+  let photosFolder;
+
+  // 既存のスプレッドシートを編集・保存する場合はそのファイルに直接「上書き保存」
+  if (spreadsheetId) {
+    try {
+      targetFile = DriveApp.getFileById(spreadsheetId);
+      ss = SpreadsheetApp.openById(spreadsheetId);
+      const parents = targetFile.getParents();
+      mainFolder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
+      
+      const photoFolders = mainFolder.getFoldersByName('写真');
+      photosFolder = photoFolders.hasNext() ? photoFolders.next() : mainFolder.createFolder('写真');
+    } catch (e) {
+      Logger.log('Spreadsheet open error, creating new copy: ' + e.message);
+    }
+  }
+
+  // 新規作成時は元テンプレートを絶対に上書きせず、フォルダ階層内に新しいスプレッドシートとしてコピー作成！
+  if (!ss) {
+    const todayStr = new Date().toLocaleDateString('ja-JP').replace(/\//g, '');
+    const exportFolderName = `工事写真台帳_${todayStr}`;
+    
+    // フォルダ階層構造: 工事写真台帳 / 建物名称 / 工事内容 / 工事写真台帳_日付
+    const rootFolder = getOrCreateFolder(DriveApp.getRootFolder(), ROOT_FOLDER_NAME);
+    const buildingFolder = getOrCreateFolder(rootFolder, projectNameLine1 || '未設定');
+    const workFolder = getOrCreateFolder(buildingFolder, projectNameLine2 || '未設定');
+    mainFolder = workFolder.createFolder(exportFolderName);
+    photosFolder = mainFolder.createFolder('写真');
+    
+    // 該当テンプレートファイル（2枚用/3枚用/施工写真用）を複製して新しい台帳ファイルを生成
+    const templateFile = DriveApp.getFileById(template.id);
+    targetFile = templateFile.makeCopy(exportFolderName, mainFolder);
+    ss = SpreadsheetApp.openById(targetFile.getId());
+  }
+
   const sheet = ss.getSheets()[0];
-  
-  const targetFile = DriveApp.getFileById(targetId);
-  const parents = targetFile.getParents();
-  const mainFolder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
-  const photoFolders = mainFolder.getFoldersByName('写真');
-  const photosFolder = photoFolders.hasNext() ? photoFolders.next() : mainFolder.createFolder('写真');
+  const targetId = ss.getId();
   
   const totalPhotos = photos.length;
   const existingBlocks = template.blocksPerPage;
