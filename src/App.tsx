@@ -270,11 +270,46 @@ function App() {
     }));
   };
 
-  const updateTestField = (id: string, fieldKey: string, value: string) => {
+  const updateTestField = (photoId: string, key: string, value: string) => {
     setPhotos(prev => prev.map(p => {
-      if (p.id !== id) return p;
-      return { ...p, testFields: { ...p.testFields, [fieldKey]: value } };
+      if (p.id !== photoId) return p;
+      return {
+        ...p,
+        testFields: {
+          ...p.testFields,
+          [key]: value,
+        }
+      };
     }));
+  };
+
+  const copyFromPrevious = (targetId: string, globalIndex: number) => {
+    if (globalIndex <= 0) return;
+    const prevPhoto = photos[globalIndex - 1];
+    if (!prevPhoto) return;
+
+    setPhotos(prev => prev.map(p => {
+      if (p.id === targetId) {
+        return {
+          ...p,
+          description: prevPhoto.description || '',
+          testType: prevPhoto.testType || '',
+          testFields: { ...(prevPhoto.testFields || {}) },
+        };
+      }
+      return p;
+    }));
+  };
+
+  const copyToAll = (sourcePhoto: PhotoData) => {
+    if (confirm('すべての写真に「内容」と「試験詳細」を上書きコピーしますか？')) {
+      setPhotos(prev => prev.map(p => ({
+        ...p,
+        description: sourcePhoto.description || '',
+        testType: sourcePhoto.testType || '',
+        testFields: { ...(sourcePhoto.testFields || {}) },
+      })));
+    }
   };
 
   const toggleGlobalDisplayField = (fieldKey: DisplayFieldKey) => {
@@ -800,8 +835,31 @@ function App() {
                         className={`photo-item ${isSelected ? 'photo-item-selected' : ''} ${photo.isBlank ? 'photo-item-blank' : ''}`}
                         onClick={() => setSelectedPhotoId(isSelected ? null : photo.id)}
                       >
-                        <div className="photo-number-badge">
-                          {globalIndex + 1}/{totalPhotos}
+                        <div className="photo-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', width: '100%' }}>
+                          <div className="photo-number-badge" style={{ position: 'static' }}>
+                            {globalIndex + 1}/{totalPhotos}
+                          </div>
+                          
+                          <div className="photo-quick-actions" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+                            {globalIndex > 0 && (
+                              <button
+                                type="button"
+                                className="action-pill-btn"
+                                title="上の写真から「内容」と「試験詳細」をコピー"
+                                onClick={() => copyFromPrevious(photo.id, globalIndex)}
+                              >
+                                📋 上からコピー
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="action-pill-btn primary"
+                              title="すべての写真へ「内容」と「試験詳細」を一括反映"
+                              onClick={() => copyToAll(photo)}
+                            >
+                              ✨ 全枠へ一括反映
+                            </button>
+                          </div>
                         </div>
 
                         {isSelected && (
@@ -924,37 +982,7 @@ function App() {
                           
                           {globalDisplayFields.includes('description') && (
                             <div className="info-row description-multi-row">
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '0.35rem' }}>
-                                <label style={{ fontWeight: 600, color: 'var(--sys-blue)', margin: 0 }}>内容</label>
-                                <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                  {globalIndex > 0 && (
-                                    <button
-                                      type="button"
-                                      title="上の写真の内容をコピー"
-                                      onClick={() => {
-                                        const prevDesc = photos[globalIndex - 1]?.description || '';
-                                        updatePhoto(photo.id, 'description', prevDesc);
-                                      }}
-                                      style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 500, background: '#ffffff', border: '1px solid #007aff', color: '#007aff', borderRadius: '4px', cursor: 'pointer' }}
-                                    >
-                                      📋 上の写真の内容をコピー
-                                    </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    title="すべての写真にこの内容をコピー"
-                                    onClick={() => {
-                                      if (confirm('すべての写真の内容をこのテキストに上書きコピーしますか？')) {
-                                        const currentDesc = photo.description || '';
-                                        setPhotos(prev => prev.map(p => ({ ...p, description: currentDesc })));
-                                      }
-                                    }}
-                                    style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 500, background: '#eef6ff', border: '1px solid #007aff', color: '#007aff', borderRadius: '4px', cursor: 'pointer' }}
-                                  >
-                                    全写真へ一括コピー
-                                  </button>
-                                </div>
-                              </div>
+                              <label style={{ fontWeight: 600, color: 'var(--sys-blue)' }}>内容</label>
                               <div className="input-wrapper description-lines-card" style={{ background: '#f5f7fa', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e1e4e8', width: '100%' }}>
                                 {(() => {
                                   const rawDesc = photo.description ?? '';
