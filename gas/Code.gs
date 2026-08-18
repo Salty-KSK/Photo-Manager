@@ -330,23 +330,53 @@ function handleList() {
 }
 
 function handleExportPdf(data) {
-  const spreadsheetId = data.spreadsheetId;
-  const ss = SpreadsheetApp.openById(spreadsheetId);
-  
-  // スプレッドシートのあるフォルダを取得
-  const file = DriveApp.getFileById(spreadsheetId);
-  const parents = file.getParents();
-  const folder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
-  
-  // PDFとして出力
-  const pdfBlob = ss.getBlob().setName(ss.getName() + '.pdf');
-  const pdfFile = folder.createFile(pdfBlob);
-  pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  
-  return ContentService.createTextOutput(JSON.stringify({
-    success: true,
-    pdfUrl: pdfFile.getUrl()
-  })).setMimeType(ContentService.MimeType.JSON);
+  try {
+    const spreadsheetId = data.spreadsheetId;
+    const file = DriveApp.getFileById(spreadsheetId);
+    const parents = file.getParents();
+    const folder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
+    
+    // 高精度PDF出力設定: A4サイズ、縦向き、横幅フィット、余計なグリッド線非表示、中央揃え
+    const pdfExportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?` +
+      'exportFormat=pdf&format=pdf' +
+      '&size=a4' +                     // A4用紙サイズ
+      '&portrait=true' +               // 縦向き
+      '&fitw=true' +                   // 横幅を1ページに収める（自動適正拡大）
+      '&gridlines=false' +             // 不要なセルガイド線を消し綺麗な罫線のみ残す
+      '&printtitle=false' +            // タイトル非表示
+      '&sheetnames=false' +            // シート名非表示
+      '&pagenumbers=false' +           // ページ番号非表示
+      '&fittow=true' +                 // 幅に合わせる
+      '&horizontal_alignment=CENTER' + // 水平方向中央揃え
+      '&vertical_alignment=TOP' +      // 垂直方向上詰め
+      '&attachment=false';
+
+    const token = ScriptApp.getOAuthToken();
+    const response = UrlFetchApp.fetch(pdfExportUrl, {
+      headers: {
+        'Authorization': 'Bearer ' + token
+      },
+      muteHttpExceptions: true
+    });
+
+    if (response.getResponseCode() !== 200) {
+      throw new Error('PDF変換エラー: HTTP ' + response.getResponseCode());
+    }
+
+    const pdfBlob = response.getBlob().setName(file.getName() + '.pdf');
+    const pdfFile = folder.createFile(pdfBlob);
+    pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      pdfUrl: pdfFile.getUrl()
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      error: err.message
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 function handleListProjects() {
