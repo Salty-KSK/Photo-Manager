@@ -346,61 +346,11 @@ function handleExportPdf(data) {
     const spreadsheetId = data.spreadsheetId;
     const file = DriveApp.getFileById(spreadsheetId);
     const ss = SpreadsheetApp.openById(spreadsheetId);
-    const sheet = ss.getSheets()[0];
     const parents = file.getParents();
     const folder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
     
-    // データが存在する行範囲（2枚用は45行目、3枚用は66行目等）を判定
-    let lastRow = 45;
-    const metaSheet = ss.getSheetByName('_metadata');
-    if (metaSheet) {
-      try {
-        const meta = JSON.parse(metaSheet.getRange('A1').getValue());
-        const templateType = meta.templateType || 'normal2';
-        if (templateType === 'normal2') {
-          lastRow = 45;
-        } else if (templateType === 'normal3') {
-          lastRow = 66;
-        } else if (templateType === 'sekou3') {
-          lastRow = 61;
-        }
-      } catch (e) {
-        Logger.log('Meta parse error: ' + e.message);
-      }
-    }
-    
-    const sheetId = sheet.getSheetId();
-    
-    // 空白の46行目以降を完全にカットし、2枚用データ（A1:C45）のみをA4用紙1ページの全面にピッタリ収める設定
-    const pdfExportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?` +
-      `gid=${sheetId}` +
-      '&exportFormat=pdf&format=pdf' +
-      '&size=a4' +                         // A4用紙サイズ
-      '&portrait=true' +                   // 縦向き
-      '&gridlines=false' +                 // 背景の薄いガイド線を非表示
-      '&printtitle=false' +                
-      '&sheetnames=false' +                
-      '&pagenumbers=false' +               
-      '&fittow=1' +                        // 横幅を1ページにフィット
-      '&fittoh=1' +                        // 高さを1ページにフィット（下部の白紙部分を完全排除）
-      `&range=A1%3AD${lastRow}` +          // D列まで完全に含めることで「内容」欄の右枠線・レイアウトが切断されるのを解消！
-      '&horizontal_alignment=CENTER' +     // 水平方向中央寄せ
-      '&vertical_alignment=MIDDLE' +       // 垂直方向中央寄せ
-      '&attachment=false';
-
-    const token = ScriptApp.getOAuthToken();
-    const response = UrlFetchApp.fetch(pdfExportUrl, {
-      headers: {
-        'Authorization': 'Bearer ' + token
-      },
-      muteHttpExceptions: true
-    });
-
-    if (response.getResponseCode() !== 200) {
-      throw new Error('PDF変換エラー: HTTP ' + response.getResponseCode());
-    }
-
-    const pdfBlob = response.getBlob().setName(file.getName() + '.pdf');
+    // スプレッドシート本体から直接ネイティブPDF変換（URLパラメータによる変な幅合わせが100%発生しない公式機能）
+    const pdfBlob = ss.getAs('application/pdf').setName(file.getName() + '.pdf');
     const pdfFile = folder.createFile(pdfBlob);
     pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
