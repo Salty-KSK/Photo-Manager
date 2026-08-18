@@ -1165,39 +1165,3 @@ select {
   background-color: #e1f0ff;
   border-color: var(--sys-blue);
 }
-
-/* 写真カード上部のアクションピルボタン */
-.action-pill-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.3rem 0.65rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--sys-text);
-  background-color: #ffffff;
-  border: 1px solid var(--sys-border);
-  border-radius: 20px;
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.action-pill-btn:hover {
-  background-color: #f0f7ff;
-  border-color: var(--sys-blue);
-  color: var(--sys-blue);
-  transform: translateY(-1px);
-}
-
-.action-pill-btn.primary {
-  background-color: #eef6ff;
-  border-color: rgba(0, 122, 255, 0.4);
-  color: #0066cc;
-}
-
-.action-pill-btn.primary:hover {
-  background-color: var(--sys-blue);
-  color: #ffffff;
-  border-color: var(--sys-blue);
-}

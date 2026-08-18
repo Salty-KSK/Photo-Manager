@@ -255,9 +255,13 @@ function handleExport(data) {
     
     const dataStartRow = template.firstDataRow + b * template.blockDataSize;
     
-    // 内容書き込み (C列に1行ずつ順に詰めて隙間なく配置)
+    // 内容書き込み (C列に1行ずつ順番に)
     const fieldsToWrite = [];
     const displayFields = photo.displayFields || [];
+    
+    const hasTestType = !!photo.testType && displayFields.includes('testDetails');
+    // 試験区分がある場合は末尾固定6行を試験記録に確保するため、前半項目は12行（18-6=12）までに制限
+    const maxContentLines = hasTestType ? 12 : template.contentRows;
     
     if (displayFields.includes('date') && photo.date) {
       fieldsToWrite.push(`日付： ${formatJapaneseDate(photo.date)}`);
@@ -279,27 +283,36 @@ function handleExport(data) {
       });
     }
     
-    const hasTestType = !!photo.testType && displayFields.includes('testDetails');
+    // 最大枠数 (12行または18行) にカット
+    const trimmedFields = fieldsToWrite.slice(0, maxContentLines);
+    
     if (hasTestType) {
-      // 試験記録の全行を準備（定義された順番通りに確実に取得）
+      // 前半12行分（C5:C16等）に日付・場所・種別・多行内容を書き込み
+      for (let j = 0; j < trimmedFields.length; j++) {
+        targetSheet.getRange(dataStartRow + j, 3).setValue(trimmedFields[j]);
+      }
+      
+      // 固定末尾6行分（C17:C22等）に【試験記録】を配置
       const testLines = ['【試験記録】'];
       if (photo.testFields) {
-        // キーの書き込み順番を絶対固定（開始時間含む）
-        const keyOrder = ['designPressure', 'holdTime', 'pressureState', 'startTime', 'testPressure', 'waterLocation', 'waterAmount', 'waterStatus'];
-        keyOrder.forEach(key => {
+        const testKeys = Object.keys(photo.testFields);
+        for (let j = 0; j < testKeys.length; j++) {
+          const key = testKeys[j];
           if (photo.testFields[key]) {
             testLines.push(`${getFieldLabel(key)}： ${photo.testFields[key]}`);
           }
-        });
+        }
       }
-      
-      // 内容の有無に関わらず直後に上に詰めて【試験記録】を追加！
-      fieldsToWrite.push(...testLines);
-    }
-    
-    // 全体を最大18行枠内に上から順番に隙間なくきっちり書き込み！
-    for (let j = 0; j < fieldsToWrite.length && j < template.contentRows; j++) {
-      targetSheet.getRange(dataStartRow + j, 3).setValue(fieldsToWrite[j]);
+      // 末尾固定6行の領域 (dataStartRow + 12 〜 17)
+      for (let j = 0; j < 6; j++) {
+        const lineVal = j < testLines.length ? testLines[j] : '';
+        targetSheet.getRange(dataStartRow + 12 + j, 3).setValue(lineVal);
+      }
+    } else {
+      // 試験区分なしの場合は全18行枠を使って書き込み
+      for (let j = 0; j < trimmedFields.length && j < template.contentRows; j++) {
+        targetSheet.getRange(dataStartRow + j, 3).setValue(trimmedFields[j]);
+      }
     }
     
     // 撮影場所番号の書き込み

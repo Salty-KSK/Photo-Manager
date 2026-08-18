@@ -49,7 +49,7 @@ const TEST_TEMPLATES: Record<string, {
     fields: [
       { key: 'designPressure', label: '設計圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.0' },
       { key: 'holdTime', label: '保持時間', type: 'combo', units: ['時間', '分', 'h', 'min'], placeholder: '24' },
-      { key: 'pressureState', label: '区分', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
+      { key: 'pressureState', label: '撮影対象', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
       { key: 'startTime', label: '開始時間', type: 'time_select' },
       { key: 'testPressure', label: '試験圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.0' },
     ]
@@ -59,7 +59,7 @@ const TEST_TEMPLATES: Record<string, {
     fields: [
       { key: 'designPressure', label: '設計圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.75' },
       { key: 'holdTime', label: '保持時間', type: 'combo', units: ['分', '時間', '10分以上'], placeholder: '10' },
-      { key: 'pressureState', label: '区分', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
+      { key: 'pressureState', label: '撮影対象', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
       { key: 'startTime', label: '開始時間', type: 'time_select' },
       { key: 'testPressure', label: '試験圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.75' },
     ]
@@ -147,35 +147,7 @@ function IndividualDropzone({ onDropBlock }: { onDropBlock: (file: File) => void
 type ViewMode = 'home' | 'editor';
 
 function App() {
-  // App-level clipboard for Content & Test details
-  const [clipboardData, setClipboardData] = useState<{
-    description: string;
-    testType: string;
-    testFields: Record<string, string>;
-  } | null>(null);
-
-  const handleCopyToClipboard = (photo: PhotoData) => {
-    setClipboardData({
-      description: photo.description || '',
-      testType: photo.testType || '',
-      testFields: { ...(photo.testFields || {}) },
-    });
-  };
-
-  const handlePasteFromClipboard = (targetPhotoId: string) => {
-    if (!clipboardData) return;
-    setPhotos(prev => prev.map(p => {
-      if (p.id === targetPhotoId) {
-        return {
-          ...p,
-          description: clipboardData.description,
-          testType: clipboardData.testType,
-          testFields: { ...clipboardData.testFields },
-        };
-      }
-      return p;
-    }));
-  };
+  const [currentView, setCurrentView] = useState<ViewMode>('home');
   const [lastExportedSpreadsheetId, setLastExportedSpreadsheetId] = useState('');
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [photos, setPhotos] = useState<PhotoData[]>([]);
@@ -281,9 +253,8 @@ function App() {
         if (template) {
           updated.description = template.description;
           const newFields: Record<string, string> = {};
-          const currentTestFields = p.testFields || {};
           template.fields.forEach(f => {
-            newFields[f.key] = currentTestFields[f.key] || '';
+            newFields[f.key] = p.testFields[f.key] || '';
           });
           updated.testFields = newFields;
           // 試験区分を選択した場合、testDetailsを自動追加
@@ -299,46 +270,11 @@ function App() {
     }));
   };
 
-  const updateTestField = (photoId: string, key: string, value: string) => {
+  const updateTestField = (id: string, fieldKey: string, value: string) => {
     setPhotos(prev => prev.map(p => {
-      if (p.id !== photoId) return p;
-      return {
-        ...p,
-        testFields: {
-          ...(p.testFields || {}),
-          [key]: value,
-        }
-      };
+      if (p.id !== id) return p;
+      return { ...p, testFields: { ...p.testFields, [fieldKey]: value } };
     }));
-  };
-
-  const copyFromPrevious = (targetId: string, globalIndex: number) => {
-    if (globalIndex <= 0) return;
-    const prevPhoto = photos[globalIndex - 1];
-    if (!prevPhoto) return;
-
-    setPhotos(prev => prev.map(p => {
-      if (p.id === targetId) {
-        return {
-          ...p,
-          description: prevPhoto.description || '',
-          testType: prevPhoto.testType || '',
-          testFields: { ...(prevPhoto.testFields || {}) },
-        };
-      }
-      return p;
-    }));
-  };
-
-  const copyToAll = (sourcePhoto: PhotoData) => {
-    if (confirm('すべての写真に「内容」と「試験詳細」を上書きコピーしますか？')) {
-      setPhotos(prev => prev.map(p => ({
-        ...p,
-        description: sourcePhoto.description || '',
-        testType: sourcePhoto.testType || '',
-        testFields: { ...(sourcePhoto.testFields || {}) },
-      })));
-    }
   };
 
   const toggleGlobalDisplayField = (fieldKey: DisplayFieldKey) => {
@@ -625,7 +561,7 @@ function App() {
                     try {
                       const res = await fetch(`${GAS_URL}?action=import&spreadsheetId=${file.id}`);
                       const result = await res.json();
-                      if (result && result.data) {
+                      if (result.data) {
                         setProjectNameLine1(result.data.projectNameLine1 || '');
                         setProjectNameLine2(result.data.projectNameLine2 || '');
                         if (result.data.templateType) setTemplateType(result.data.templateType);
@@ -650,14 +586,10 @@ function App() {
                         setLastExportedSpreadsheetId(file.id);
                         setCurrentView('editor');
                       } else {
-                        alert(result?.error || 'データの取得に失敗しました');
-                        setPhotos([]);
-                        setCurrentView('editor');
+                        alert(result.error || '読み込みに失敗しました');
                       }
-                    } catch (err: any) {
-                      alert('読み込み中に通信エラーが発生しました: ' + (err?.message || String(err)));
-                      setPhotos([]);
-                      setCurrentView('editor');
+                    } catch (err) {
+                      alert('読み込み中にエラーが発生しました');
                     }
                   }}>
                     <FileSpreadsheet size={24} style={{ flexShrink: 0, color: 'var(--sys-blue)' }} />
@@ -1062,9 +994,9 @@ function App() {
                                         <input 
                                           type="text" 
                                           placeholder={f.placeholder}
-                                          value={((photo.testFields || {})[f.key] || '').split(' ')[0] || ''} 
+                                          value={(photo.testFields[f.key] || '').split(' ')[0] || ''} 
                                           onChange={(e) => {
-                                            const parts = ((photo.testFields || {})[f.key] || '').split(' ');
+                                            const parts = (photo.testFields[f.key] || '').split(' ');
                                             const currentUnit = parts[1] || f.units?.[0] || '';
                                             const val = e.target.value ? `${e.target.value} ${currentUnit}`.trim() : '';
                                             updateTestField(photo.id, f.key, val);
@@ -1072,9 +1004,9 @@ function App() {
                                           style={{ flex: 1 }}
                                         />
                                         <select
-                                          value={((photo.testFields || {})[f.key] || '').split(' ')[1] || f.units?.[0] || ''}
+                                          value={(photo.testFields[f.key] || '').split(' ')[1] || f.units?.[0] || ''}
                                           onChange={(e) => {
-                                            const parts = ((photo.testFields || {})[f.key] || '').split(' ');
+                                            const parts = (photo.testFields[f.key] || '').split(' ');
                                             const currentNum = parts[0] || '';
                                             const val = currentNum ? `${currentNum} ${e.target.value}`.trim() : e.target.value;
                                             updateTestField(photo.id, f.key, val);
@@ -1089,16 +1021,16 @@ function App() {
                                     ) : f.type === 'time' ? (
                                       <input 
                                         type="time" 
-                                        value={(photo.testFields || {})[f.key] || ''} 
+                                        value={photo.testFields[f.key] || ''} 
                                         onChange={(e) => updateTestField(photo.id, f.key, e.target.value)}
                                         style={{ width: '140px' }}
                                       />
                                     ) : f.type === 'time_select' ? (
                                       <div className="time-select-row" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', width: '100%' }}>
                                         <select
-                                          value={((photo.testFields || {})[f.key] || '11:00').split(':')[0] || '11'}
+                                          value={(photo.testFields[f.key] || '11:00').split(':')[0] || '11'}
                                           onChange={(e) => {
-                                            const parts = ((photo.testFields || {})[f.key] || '11:00').split(':');
+                                            const parts = (photo.testFields[f.key] || '11:00').split(':');
                                             const currentMin = parts[1] || '00';
                                             updateTestField(photo.id, f.key, `${e.target.value}:${currentMin}`);
                                           }}
@@ -1110,9 +1042,9 @@ function App() {
                                         </select>
                                         <span style={{ fontWeight: 'bold' }}>:</span>
                                         <select
-                                          value={((photo.testFields || {})[f.key] || '11:00').split(':')[1] || '00'}
+                                          value={(photo.testFields[f.key] || '11:00').split(':')[1] || '00'}
                                           onChange={(e) => {
-                                            const parts = ((photo.testFields || {})[f.key] || '11:00').split(':');
+                                            const parts = (photo.testFields[f.key] || '11:00').split(':');
                                             const currentHour = parts[0] || '11';
                                             updateTestField(photo.id, f.key, `${currentHour}:${e.target.value}`);
                                           }}
@@ -1161,28 +1093,6 @@ function App() {
                               </div>
                             </div>
                           )}
-
-                          {/* 撮影場所の下に配置する クリップボード コピー＆ペーストツールバー */}
-                          <div className="clipboard-toolbar" style={{ display: 'flex', gap: '0.6rem', marginTop: '0.8rem', paddingTop: '0.8rem', borderTop: '1px dashed #d0d7de', width: '100%' }}>
-                            <button
-                              type="button"
-                              className="btn-clipboard copy"
-                              onClick={() => handleCopyToClipboard(photo)}
-                              style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.6rem 0.8rem', fontSize: '0.82rem', fontWeight: 600, color: '#0066cc', background: '#eef6ff', border: '1px solid #007aff60', borderRadius: '6px', cursor: 'pointer' }}
-                            >
-                              📋 この内容・詳細をコピー
-                            </button>
-                            
-                            <button
-                              type="button"
-                              className="btn-clipboard paste"
-                              disabled={!clipboardData}
-                              onClick={() => handlePasteFromClipboard(photo.id)}
-                              style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.6rem 0.8rem', fontSize: '0.82rem', fontWeight: 600, color: clipboardData ? '#1b702d' : '#8c8c8c', background: clipboardData ? '#eaf5ea' : '#f2f2f2', border: `1px solid ${clipboardData ? '#34c759' : '#cccccc'}`, borderRadius: '6px', cursor: clipboardData ? 'pointer' : 'not-allowed', opacity: clipboardData ? 1 : 0.6 }}
-                            >
-                              📥 この枠へ貼り付け (ペースト)
-                            </button>
-                          </div>
                         </div>
                       </div>
                     );
