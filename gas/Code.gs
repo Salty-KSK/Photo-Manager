@@ -387,7 +387,7 @@ function handleExportPdf(data) {
       '&pagenumbers=false' +               
       '&fittow=1' +                        // 横幅を1ページにフィット
       '&fittoh=1' +                        // 高さを1ページにフィット（下部の白紙部分を完全排除）
-      `&range=A1%3AC${lastRow}` +          // 2枚用データ（A1:C45）のみに限定！
+      `&range=A1%3AD${lastRow}` +          // D列まで完全に含めることで「内容」欄の右枠線・レイアウトが切断されるのを解消！
       '&horizontal_alignment=CENTER' +     // 水平方向中央寄せ
       '&vertical_alignment=MIDDLE' +       // 垂直方向中央寄せ
       '&attachment=false';
@@ -481,19 +481,24 @@ function insertImageIntoCell(sheet, startRow, template, imageBlob, folderId) {
   const ucUrl = `https://drive.google.com/uc?id=${fileId}`;
   const displayUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
   
-  // ブロックごとの写真結合セルの行数を算出 (例: A5:B24 の20行分)
+  // 写真結合セルの行数 (例: A5:B24 の20行分)
   let rowSpan = 20;
   if (template && template.contentRows === 19) {
     rowSpan = 19;
   }
   const endRow = startRow + rowSpan - 1;
   
-  // A列とB列の結合セル範囲(例: A5:B24)を取得し、結合を確実に維持
+  // A列とB列の結合セル範囲(例: A5:B24)を再結合
   const photoRange = sheet.getRange(`A${startRow}:B${endRow}`);
   photoRange.merge();
   
-  // A:B結合写真枠の全領域ぴったりに隙間・余白なく画像を挿入
-  photoRange.setFormula(`=IMAGE("${ucUrl}", 2)`);
+  // スプレッドシート本体でもWebアプリでも100%確実に画像が表示される公式APIを使用
+  try {
+    const image = SpreadsheetApp.newCellImage().setSourceUrl(ucUrl).build();
+    photoRange.setValue(image);
+  } catch (e) {
+    photoRange.setFormula(`=IMAGE("${ucUrl}", 1)`);
+  }
   
   return displayUrl;
 }
