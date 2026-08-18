@@ -48,7 +48,7 @@ const TEST_TEMPLATES: Record<string, {
     fields: [
       { key: 'testPressure', label: '試験圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.0' },
       { key: 'holdTime', label: '保持時間', type: 'combo', units: ['時間', '分', 'h', 'min'], placeholder: '24' },
-      { key: 'startTime', label: '開始時間', placeholder: '11:03' },
+      { key: 'startTime', label: '開始時間', type: 'time', placeholder: '11:03' },
       { key: 'pressureState', label: '撮影対象', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
       { key: 'measuredPressure', label: '測定値', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.0' },
     ]
@@ -58,7 +58,7 @@ const TEST_TEMPLATES: Record<string, {
     fields: [
       { key: 'testPressure', label: '試験圧力', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.75' },
       { key: 'holdTime', label: '保持時間', type: 'combo', units: ['分', '時間', '10分以上'], placeholder: '10' },
-      { key: 'startTime', label: '開始時間', placeholder: '14:00' },
+      { key: 'startTime', label: '開始時間', type: 'time', placeholder: '14:00' },
       { key: 'pressureState', label: '撮影対象', type: 'select', options: [{value: '', label: '選択してください'}, {value: '始圧', label: '始圧'}, {value: '終圧', label: '終圧'}] },
       { key: 'measuredPressure', label: '測定値', type: 'combo', units: ['Mpa', 'Kpa'], placeholder: '1.75' },
     ]
@@ -921,15 +921,55 @@ function App() {
                           </div>
                           
                           {globalDisplayFields.includes('description') && (
-                            <div className="info-row">
+                            <div className="info-row description-multi-row">
                               <label>内容</label>
-                              <div className="input-wrapper">
-                                <textarea 
-                                  placeholder="内容を入力..."
-                                  rows={2}
-                                  value={photo.description} 
-                                  onChange={(e) => updatePhoto(photo.id, 'description', e.target.value)} 
-                                />
+                              <div className="input-wrapper description-lines-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%' }}>
+                                {((photo.description || '').split('\n')).map((descLine, lineIndex, arr) => (
+                                  <div key={lineIndex} className="desc-line-item" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--sys-text-muted)', width: '38px', flexShrink: 0 }}>
+                                      {lineIndex + 1}行目
+                                    </span>
+                                    <input
+                                      type="text"
+                                      placeholder={`内容（${lineIndex + 1}行目）...`}
+                                      value={descLine}
+                                      onChange={(e) => {
+                                        const lines = (photo.description || '').split('\n');
+                                        lines[lineIndex] = e.target.value;
+                                        updatePhoto(photo.id, 'description', lines.join('\n'));
+                                      }}
+                                      style={{ flex: 1 }}
+                                    />
+                                    {arr.length > 1 && (
+                                      <button
+                                        type="button"
+                                        className="btn-icon danger"
+                                        style={{ color: 'var(--sys-danger)', padding: '0.2rem', background: 'none', border: 'none', cursor: 'pointer' }}
+                                        title="この行を削除"
+                                        onClick={() => {
+                                          const lines = (photo.description || '').split('\n');
+                                          lines.splice(lineIndex, 1);
+                                          updatePhoto(photo.id, 'description', lines.join('\n'));
+                                        }}
+                                      >
+                                        <X size={16} />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary"
+                                  style={{ padding: '0.35rem 0.7rem', fontSize: '0.75rem', alignSelf: 'flex-start', marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                                  onClick={() => {
+                                    const lines = photo.description ? photo.description.split('\n') : [''];
+                                    lines.push('');
+                                    updatePhoto(photo.id, 'description', lines.join('\n'));
+                                  }}
+                                >
+                                  <Plus size={14} />
+                                  内容の行を追加
+                                </button>
                               </div>
                             </div>
                           )}
@@ -970,6 +1010,13 @@ function App() {
                                           ))}
                                         </select>
                                       </div>
+                                    ) : f.type === 'time' ? (
+                                      <input 
+                                        type="time" 
+                                        value={photo.testFields[f.key] || ''} 
+                                        onChange={(e) => updateTestField(photo.id, f.key, e.target.value)}
+                                        style={{ width: '140px' }}
+                                      />
                                     ) : f.type === 'select' ? (
                                       <select
                                         value={photo.testFields[f.key] || ''}
