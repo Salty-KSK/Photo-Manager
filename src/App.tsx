@@ -624,7 +624,7 @@ function App() {
                     try {
                       const res = await fetch(`${GAS_URL}?action=import&spreadsheetId=${file.id}`);
                       const result = await res.json();
-                      if (result.data) {
+                      if (result && result.data) {
                         setProjectNameLine1(result.data.projectNameLine1 || '');
                         setProjectNameLine2(result.data.projectNameLine2 || '');
                         if (result.data.templateType) setTemplateType(result.data.templateType);
@@ -649,10 +649,14 @@ function App() {
                         setLastExportedSpreadsheetId(file.id);
                         setCurrentView('editor');
                       } else {
-                        alert(result.error || '読み込みに失敗しました');
+                        alert(result?.error || 'データの取得に失敗しました');
+                        setPhotos([]);
+                        setCurrentView('editor');
                       }
-                    } catch (err) {
-                      alert('読み込み中にエラーが発生しました');
+                    } catch (err: any) {
+                      alert('読み込み中に通信エラーが発生しました: ' + (err?.message || String(err)));
+                      setPhotos([]);
+                      setCurrentView('editor');
                     }
                   }}>
                     <FileSpreadsheet size={24} style={{ flexShrink: 0, color: 'var(--sys-blue)' }} />
