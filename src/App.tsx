@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, X, FileSpreadsheet, ChevronUp, ChevronDown, ArrowUpDown, Menu, Plus, RefreshCw, RotateCw } from 'lucide-react';
+import { Upload, X, FileSpreadsheet, ChevronUp, ChevronDown, ArrowUpDown, Menu, Plus, RefreshCw, RotateCw, Trash2 } from 'lucide-react';
 import './App.css';
 
 // テンプレートタイプ定義
@@ -106,8 +106,14 @@ function IndividualDropzone({ onDropBlock }: { onDropBlock: (file: File) => void
     multiple: false
   });
 
+  const rootProps = getRootProps();
+
   return (
-    <div {...getRootProps()} className={`individual-dropzone ${isDragActive ? 'active' : ''}`} onClick={(e) => e.stopPropagation()}>
+    <div 
+      {...rootProps} 
+      className={`individual-dropzone ${isDragActive ? 'active' : ''}`} 
+      onClick={(e) => { e.stopPropagation(); rootProps.onClick?.(e); }}
+    >
       <input {...getInputProps()} />
       <Upload size={24} />
       <span>クリックまたはドロップ</span>
@@ -645,6 +651,23 @@ function App() {
                 <div key={pageIndex} className="photo-page">
                   <div className="page-header">
                     <span>{pageIndex + 1} / {photoPages.length} ページ</span>
+                    <button 
+                      className="btn btn-danger" 
+                      style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                      onClick={() => {
+                        if (confirm(`${pageIndex + 1}ページの写真をすべて削除しますか？`)) {
+                          const idsToRemove = pagePhotos.map(p => p.id);
+                          setPhotos(prev => {
+                            prev.forEach(p => { if (idsToRemove.includes(p.id) && p.previewUrl && p.file) URL.revokeObjectURL(p.previewUrl); });
+                            return prev.filter(p => !idsToRemove.includes(p.id));
+                          });
+                          setSelectedPhotoId(null);
+                        }
+                      }}
+                    >
+                      <Trash2 size={14} />
+                      ページ削除
+                    </button>
                   </div>
                   
                   {pagePhotos.map((photo) => {
