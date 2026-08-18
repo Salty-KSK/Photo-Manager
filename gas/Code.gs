@@ -110,43 +110,16 @@ function handleExport(data) {
     throw new Error('Invalid templateType');
   }
 
-  let ss;
-  let newFile;
-  let mainFolder;
-  let photosFolder;
-
-  // 既存スプレッドシートへの「上書き保存」処理
-  if (spreadsheetId) {
-    try {
-      newFile = DriveApp.getFileById(spreadsheetId);
-      ss = SpreadsheetApp.openById(spreadsheetId);
-      const parents = newFile.getParents();
-      mainFolder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
-      
-      const photoFolders = mainFolder.getFoldersByName('写真');
-      photosFolder = photoFolders.hasNext() ? photoFolders.next() : mainFolder.createFolder('写真');
-    } catch (e) {
-      Logger.log('Spreadsheet open error, fallback to new file: ' + e.message);
-    }
-  }
-
-  // IDがない・取得失敗時は新規作成
-  if (!ss) {
-    const todayStr = new Date().toLocaleDateString('ja-JP').replace(/\//g, '');
-    const exportFolderName = `工事写真台帳_${todayStr}`;
-    
-    const rootFolder = getOrCreateFolder(DriveApp.getRootFolder(), ROOT_FOLDER_NAME);
-    const buildingFolder = getOrCreateFolder(rootFolder, projectNameLine1 || '未設定');
-    const workFolder = getOrCreateFolder(buildingFolder, projectNameLine2 || '未設定');
-    mainFolder = workFolder.createFolder(exportFolderName);
-    photosFolder = mainFolder.createFolder('写真');
-    
-    const templateFile = DriveApp.getFileById(template.id);
-    newFile = templateFile.makeCopy(exportFolderName, mainFolder);
-    ss = SpreadsheetApp.openById(newFile.getId());
-  }
-
+  // ユーザー指定の該当テンプレートスプレッドシート（2枚用/3枚用/施工写真用）のIDをそのまま直接使用
+  const targetId = spreadsheetId || template.id;
+  const ss = SpreadsheetApp.openById(targetId);
   const sheet = ss.getSheets()[0];
+  
+  const targetFile = DriveApp.getFileById(targetId);
+  const parents = targetFile.getParents();
+  const mainFolder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
+  const photoFolders = mainFolder.getFoldersByName('写真');
+  const photosFolder = photoFolders.hasNext() ? photoFolders.next() : mainFolder.createFolder('写真');
   
   const totalPhotos = photos.length;
   const existingBlocks = template.blocksPerPage;
