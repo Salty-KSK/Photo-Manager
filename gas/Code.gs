@@ -190,12 +190,15 @@ function handleExport(data) {
   
   // 各シートのヘッダー（A1:C1 = 建物名称, A2:C2 = 工事内容）の書き込みおよび初期化
   sheets.forEach((sh, sheetIdx) => {
-    if (projectNameLine1) {
-      sh.getRange('A1:C1').setValue(projectNameLine1);
-    }
-    if (projectNameLine2) {
-      sh.getRange('A2:C2').setValue(projectNameLine2);
-    }
+    // 建物名称（A1:C1 結合セル）
+    const buildingRange = sh.getRange('A1:C1');
+    buildingRange.merge();
+    sh.getRange('A1').setValue(projectNameLine1 || '');
+    
+    // 工事内容（A2:C2 結合セル）
+    const workRange = sh.getRange('A2:C2');
+    workRange.merge();
+    sh.getRange('A2').setValue(projectNameLine2 || '');
     
     // 2枚目以降の複製タブの場合、古いデータ内容をクリア
     if (sheetIdx > 0) {
