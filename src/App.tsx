@@ -281,8 +281,9 @@ function App() {
         if (template) {
           updated.description = template.description;
           const newFields: Record<string, string> = {};
+          const currentTestFields = p.testFields || {};
           template.fields.forEach(f => {
-            newFields[f.key] = p.testFields[f.key] || '';
+            newFields[f.key] = currentTestFields[f.key] || '';
           });
           updated.testFields = newFields;
           // 試験区分を選択した場合、testDetailsを自動追加
@@ -304,7 +305,7 @@ function App() {
       return {
         ...p,
         testFields: {
-          ...p.testFields,
+          ...(p.testFields || {}),
           [key]: value,
         }
       };
@@ -1061,9 +1062,9 @@ function App() {
                                         <input 
                                           type="text" 
                                           placeholder={f.placeholder}
-                                          value={(photo.testFields[f.key] || '').split(' ')[0] || ''} 
+                                          value={((photo.testFields || {})[f.key] || '').split(' ')[0] || ''} 
                                           onChange={(e) => {
-                                            const parts = (photo.testFields[f.key] || '').split(' ');
+                                            const parts = ((photo.testFields || {})[f.key] || '').split(' ');
                                             const currentUnit = parts[1] || f.units?.[0] || '';
                                             const val = e.target.value ? `${e.target.value} ${currentUnit}`.trim() : '';
                                             updateTestField(photo.id, f.key, val);
@@ -1071,9 +1072,9 @@ function App() {
                                           style={{ flex: 1 }}
                                         />
                                         <select
-                                          value={(photo.testFields[f.key] || '').split(' ')[1] || f.units?.[0] || ''}
+                                          value={((photo.testFields || {})[f.key] || '').split(' ')[1] || f.units?.[0] || ''}
                                           onChange={(e) => {
-                                            const parts = (photo.testFields[f.key] || '').split(' ');
+                                            const parts = ((photo.testFields || {})[f.key] || '').split(' ');
                                             const currentNum = parts[0] || '';
                                             const val = currentNum ? `${currentNum} ${e.target.value}`.trim() : e.target.value;
                                             updateTestField(photo.id, f.key, val);
@@ -1088,16 +1089,16 @@ function App() {
                                     ) : f.type === 'time' ? (
                                       <input 
                                         type="time" 
-                                        value={photo.testFields[f.key] || ''} 
+                                        value={(photo.testFields || {})[f.key] || ''} 
                                         onChange={(e) => updateTestField(photo.id, f.key, e.target.value)}
                                         style={{ width: '140px' }}
                                       />
                                     ) : f.type === 'time_select' ? (
                                       <div className="time-select-row" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', width: '100%' }}>
                                         <select
-                                          value={(photo.testFields[f.key] || '11:00').split(':')[0] || '11'}
+                                          value={((photo.testFields || {})[f.key] || '11:00').split(':')[0] || '11'}
                                           onChange={(e) => {
-                                            const parts = (photo.testFields[f.key] || '11:00').split(':');
+                                            const parts = ((photo.testFields || {})[f.key] || '11:00').split(':');
                                             const currentMin = parts[1] || '00';
                                             updateTestField(photo.id, f.key, `${e.target.value}:${currentMin}`);
                                           }}
@@ -1109,9 +1110,9 @@ function App() {
                                         </select>
                                         <span style={{ fontWeight: 'bold' }}>:</span>
                                         <select
-                                          value={(photo.testFields[f.key] || '11:00').split(':')[1] || '00'}
+                                          value={((photo.testFields || {})[f.key] || '11:00').split(':')[1] || '00'}
                                           onChange={(e) => {
-                                            const parts = (photo.testFields[f.key] || '11:00').split(':');
+                                            const parts = ((photo.testFields || {})[f.key] || '11:00').split(':');
                                             const currentHour = parts[0] || '11';
                                             updateTestField(photo.id, f.key, `${currentHour}:${e.target.value}`);
                                           }}
