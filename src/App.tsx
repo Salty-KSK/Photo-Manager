@@ -147,6 +147,10 @@ function App() {
   // Mobile sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Project suggestions
+  const [buildingSuggestions, setBuildingSuggestions] = useState<string[]>([]);
+  const [workSuggestions, setWorkSuggestions] = useState<Record<string, string[]>>({});
+
   // Get photos per page based on template
   const photosPerPage = TEMPLATE_OPTIONS.find(t => t.value === templateType)?.photosPerPage ?? 3;
   const hasLocationNumber = templateType === 'normal3' || templateType === 'normal2';
@@ -197,9 +201,23 @@ function App() {
     }
   }, []);
 
+  const fetchProjectList = useCallback(async () => {
+    try {
+      const res = await fetch(`${GAS_URL}?action=listProjects`);
+      const result = await res.json();
+      if (result.success) {
+        setBuildingSuggestions(result.buildings || []);
+        setWorkSuggestions(result.works || {});
+      }
+    } catch (err) {
+      console.error('Failed to fetch project list:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchFileList();
-  }, [fetchFileList]);
+    fetchProjectList();
+  }, [fetchFileList, fetchProjectList]);
 
   const updatePhoto = (id: string, field: keyof PhotoData, value: string) => {
     setPhotos(prev => prev.map(p => {
@@ -535,17 +553,31 @@ function App() {
               <label>建物名称</label>
               <input
                 type="text"
+                list="building-suggestions"
                 value={projectNameLine1}
                 onChange={(e) => setProjectNameLine1(e.target.value)}
+                placeholder="建物名称を入力..."
               />
+              <datalist id="building-suggestions">
+                {buildingSuggestions.map(b => (
+                  <option key={b} value={b} />
+                ))}
+              </datalist>
             </div>
             <div className="form-group">
               <label>工事内容</label>
               <input
                 type="text"
+                list="work-suggestions"
                 value={projectNameLine2}
                 onChange={(e) => setProjectNameLine2(e.target.value)}
+                placeholder="工事内容を入力..."
               />
+              <datalist id="work-suggestions">
+                {(workSuggestions[projectNameLine1] || []).map(w => (
+                  <option key={w} value={w} />
+                ))}
+              </datalist>
             </div>
           </div>
 

@@ -2,7 +2,16 @@
  * 工事写真台帳 - Google Apps Script バックエンド
  */
 
-const PHOTO_FOLDER_ID = '';
+const ROOT_FOLDER_NAME = '工事写真台帳';
+
+// フォルダがあれば取得、なければ作成
+function getOrCreateFolder(parent, name) {
+  const folders = parent.getFoldersByName(name);
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+  return parent.createFolder(name);
+}
 
 const TEMPLATES = {
   'sekou3': {
@@ -51,6 +60,8 @@ function doGet(e) {
     return handleImport(spreadsheetId);
   } else if (action === 'list') {
     return handleList();
+  } else if (action === 'listProjects') {
+    return handleListProjects();
   }
   
   return ContentService.createTextOutput(JSON.stringify({ error: 'Invalid action' }))
@@ -82,14 +93,17 @@ function handleExport(data) {
   }
 
   const todayStr = new Date().toLocaleDateString('ja-JP').replace(/\//g, '');
-  const folderName = `工事写真台帳_${projectNameLine1 || ''}${projectNameLine2 || ''}_${todayStr}`;
+  const exportFolderName = `工事写真台帳_${todayStr}`;
   
-  let baseFolder = PHOTO_FOLDER_ID ? DriveApp.getFolderById(PHOTO_FOLDER_ID) : DriveApp.getRootFolder();
-  const mainFolder = baseFolder.createFolder(folderName);
+  // フォルダ階層: 工事写真台帳 / 建物名称 / 工事内容 / 日付
+  const rootFolder = getOrCreateFolder(DriveApp.getRootFolder(), ROOT_FOLDER_NAME);
+  const buildingFolder = getOrCreateFolder(rootFolder, projectNameLine1 || '未設定');
+  const workFolder = getOrCreateFolder(buildingFolder, projectNameLine2 || '未設定');
+  const mainFolder = workFolder.createFolder(exportFolderName);
   const photosFolder = mainFolder.createFolder('写真');
   
   const templateFile = DriveApp.getFileById(template.id);
-  const newFile = templateFile.makeCopy(folderName, mainFolder);
+  const newFile = templateFile.makeCopy(exportFolderName, mainFolder);
   const ss = SpreadsheetApp.openById(newFile.getId());
   const sheet = ss.getSheets()[0];
   
@@ -274,6 +288,48 @@ function handleList() {
     return ContentService.createTextOutput(JSON.stringify({ 
       success: true, 
       files: formattedList 
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function handleListProjects() {
+  try {
+    const rootFolders = DriveApp.getRootFolder().getFoldersByName(ROOT_FOLDER_NAME);
+    if (!rootFolders.hasNext()) {
+      return ContentService.createTextOutput(JSON.stringify({ 
+        success: true, buildings: [], works: {} 
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const rootFolder = rootFolders.next();
+    const buildings = [];
+    const works = {};
+    
+    const buildingFolders = rootFolder.getFolders();
+    while (buildingFolders.hasNext()) {
+      const bf = buildingFolders.next();
+      const bName = bf.getName();
+      if (bName === '未設定') continue;
+      buildings.push(bName);
+      works[bName] = [];
+      const workFolders = bf.getFolders();
+      while (workFolders.hasNext()) {
+        const wf = workFolders.next();
+        const wName = wf.getName();
+        if (wName !== '未設定') {
+          works[bName].push(wName);
+        }
+      }
+    }
+    
+    buildings.sort();
+    
+    return ContentService.createTextOutput(JSON.stringify({ 
+      success: true, buildings, works 
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (err) {
