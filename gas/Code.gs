@@ -348,40 +348,15 @@ function handleList() {
 function handleExportPdf(data) {
   try {
     const spreadsheetId = data.spreadsheetId;
-    const file = DriveApp.getFileById(spreadsheetId);
     const ss = SpreadsheetApp.openById(spreadsheetId);
-    const sheet = ss.getSheets()[0];
+    
+    // スプレッドシートのあるフォルダを取得
+    const file = DriveApp.getFileById(spreadsheetId);
     const parents = file.getParents();
     const folder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
-    const sheetId = sheet.getSheetId();
     
-    // PDF出力設定: A4縦、グリッド線非表示、水平・垂直共に中央寄せ
-    const pdfExportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?` +
-      `gid=${sheetId}` +
-      '&exportFormat=pdf&format=pdf' +
-      '&size=a4' +                         // A4用紙サイズ
-      '&portrait=true' +                   // 縦向き
-      '&gridlines=false' +                 // 背景の薄いガイド線を非表示
-      '&printtitle=false' +                
-      '&sheetnames=false' +                
-      '&pagenumbers=false' +               
-      '&horizontal_alignment=CENTER' +     // 水平方向中央寄せ
-      '&vertical_alignment=MIDDLE' +       // 垂直方向中央寄せ
-      '&attachment=false';
-
-    const token = ScriptApp.getOAuthToken();
-    const response = UrlFetchApp.fetch(pdfExportUrl, {
-      headers: {
-        'Authorization': 'Bearer ' + token
-      },
-      muteHttpExceptions: true
-    });
-
-    if (response.getResponseCode() !== 200) {
-      throw new Error('PDF変換エラー: HTTP ' + response.getResponseCode());
-    }
-
-    const pdfBlob = response.getBlob().setName(file.getName() + '.pdf');
+    // 調整前の標準PDF出力
+    const pdfBlob = ss.getBlob().setName(file.getName() + '.pdf');
     const pdfFile = folder.createFile(pdfBlob);
     pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
@@ -459,8 +434,12 @@ function insertImageIntoCell(sheet, cellRef, imageBlob, folderId) {
   const displayUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
   const cell = sheet.getRange(cellRef);
   
-  // モード2 (=IMAGE(url, 2)): セルの枠線サイズぴったりに合わせて隙間・余白を完全解消
-  cell.setFormula(`=IMAGE("${ucUrl}", 2)`);
+  try {
+    const image = SpreadsheetApp.newCellImage().setSourceUrl(ucUrl).build();
+    cell.setValue(image);
+  } catch (e) {
+    cell.setFormula(`=IMAGE("${ucUrl}", 1)`);
+  }
   
   return displayUrl;
 }
