@@ -95,7 +95,7 @@ function chunkArray<T>(array: T[], size: number): T[][] {
   return result;
 }
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzYK9nQN6YFBbryRSXKJbbj8bCU-CnF_FwpnUhZ1U2_MVztsWYSq9w2d5kGDnNZhwwC/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjEZQdrAZ0tZN8EFNmZS2_FT9yabX4R2mmyjaPkmqmkDF9dvJikyRYkjXXZEW6jzJm/exec';
 
 function IndividualDropzone({ onDropBlock }: { onDropBlock: (file: File) => void }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
