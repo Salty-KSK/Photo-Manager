@@ -440,8 +440,9 @@ function App() {
       } else {
         alert('エクスポートに失敗しました: ' + (result.error || '不明なエラー'));
       }
-    } catch (err) {
-      alert('エクスポート中にエラーが発生しました');
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      alert('エクスポート中にエラーが発生しました:\n' + msg);
       console.error(err);
     } finally {
       setIsExporting(false);
