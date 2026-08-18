@@ -123,10 +123,21 @@ function handleExport(data) {
       const parents = targetFile.getParents();
       mainFolder = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
       
+      // 新しい建物名称・工事内容に応じた正しい保存先フォルダ階層を取得/作成
+      const rootFolder = getOrCreateFolder(DriveApp.getRootFolder(), ROOT_FOLDER_NAME);
+      const targetBuildingFolder = getOrCreateFolder(rootFolder, projectNameLine1 || '未設定');
+      const targetWorkFolder = getOrCreateFolder(targetBuildingFolder, projectNameLine2 || '未設定');
+      
+      // 現在の親フォルダと異なる場合（「未設定」から「実際の名称」に変更された時等）、台帳フォルダごと全自動移動！
+      const currentWorkFolder = mainFolder.getParents().hasNext() ? mainFolder.getParents().next() : null;
+      if (currentWorkFolder && currentWorkFolder.getId() !== targetWorkFolder.getId()) {
+        mainFolder.moveTo(targetWorkFolder);
+      }
+      
       const photoFolders = mainFolder.getFoldersByName('写真');
       photosFolder = photoFolders.hasNext() ? photoFolders.next() : mainFolder.createFolder('写真');
     } catch (e) {
-      Logger.log('Spreadsheet open error, creating new copy: ' + e.message);
+      Logger.log('Spreadsheet open/move error: ' + e.message);
     }
   }
 
