@@ -342,7 +342,10 @@ function base64ToBlob(base64Data, fileName) {
   const parts = base64Data.split(',');
   const contentType = parts[0].match(/:(.*?);/)[1];
   const raw = Utilities.base64Decode(parts[1]);
-  return Utilities.newBlob(raw, contentType, fileName);
+  // MIMEタイプから拡張子を決定
+  const extMap = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/gif': '.gif', 'image/webp': '.webp' };
+  const ext = extMap[contentType] || '.jpg';
+  return Utilities.newBlob(raw, contentType, fileName + ext);
 }
 
 function insertImageIntoCell(sheet, cellRef, imageBlob, folderId) {
