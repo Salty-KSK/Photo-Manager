@@ -118,6 +118,9 @@ function handleExport(data) {
     }
   }
   
+  // 写真URLを記録する配列
+  const photoImageUrls = new Array(totalPhotos).fill('');
+  
   for (let i = 0; i < totalPhotos; i++) {
     const photo = photos[i];
     if (photo.isBlank) continue;
@@ -169,7 +172,8 @@ function handleExport(data) {
     if (photo.imageBase64) {
       try {
         const imageBlob = base64ToBlob(photo.imageBase64, `photo_${i + 1}`);
-        insertImageIntoCell(sheet, `A${dataStartRow}`, imageBlob, photosFolder.getId());
+        const imageUrl = insertImageIntoCell(sheet, `A${dataStartRow}`, imageBlob, photosFolder.getId());
+        photoImageUrls[i] = imageUrl || '';
       } catch (err) {
         Logger.log('Image insertion error: ' + err.message);
       }
@@ -186,7 +190,7 @@ function handleExport(data) {
     projectNameLine1,
     projectNameLine2,
     templateType,
-    photos: photos.map(p => ({
+    photos: photos.map((p, idx) => ({
       date: p.date,
       location: p.location,
       locationNumber: p.locationNumber,
@@ -196,6 +200,7 @@ function handleExport(data) {
       testFields: p.testFields,
       displayFields: p.displayFields,
       isBlank: p.isBlank,
+      imageUrl: photoImageUrls[idx] || '',
     })),
     exportDate: new Date().toISOString(),
   };
@@ -298,6 +303,8 @@ function insertImageIntoCell(sheet, cellRef, imageBlob, folderId) {
   } catch (e) {
     cell.setFormula(`=IMAGE("${imageUrl}", 1)`);
   }
+  
+  return imageUrl;
 }
 
 function getFieldLabel(key) {
