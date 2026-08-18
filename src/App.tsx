@@ -727,6 +727,7 @@ function App() {
               <Menu size={24} />
             </button>
             <span className="topbar-title">台帳プレビュー</span>
+            <span style={{ fontSize: '0.75rem', background: '#007aff', color: '#fff', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 'bold' }}>v1.0.5 (最新行入力・単位対応版)</span>
           </div>
           
           <div className="topbar-actions">
